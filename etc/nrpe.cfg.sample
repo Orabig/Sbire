@@ -6,7 +6,6 @@
  $PLUGINSDIR = '/usr/local/nagios/libexec';
  
  $USE_RSA = 1;
- $NRPE_SERVICE_NAME = nrpe;
  
  1;
 
