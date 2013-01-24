@@ -1,0 +1,12 @@
+ # sbire.pl configuration file.
+ $pubkey = '/usr/local/nagios/bin/sbire_key.pub';
+ 
+ $SESSIONDIR = '/tmp/sbire';
+ $ARCHIVEDIR = '/usr/local/nagios/libexec/archive';
+ $PLUGINSDIR = '/usr/local/nagios/libexec';
+ 
+ $USE_RSA = 1;
+ $NRPE_SERVICE_NAME = nrpe;
+ 
+ 1;
+

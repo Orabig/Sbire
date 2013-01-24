@@ -1,15 +1,15 @@
 #!/usr/bin/perl
 
-my $Version= 'Version 0.9.3';
+my $Version= 'Version 0.9.4';
 
 ####################
 #
 # sbire.pl
 #
 # 
-# NRPE plugins update/manage script
+# Remote control script
 #
-# Usage : (must be run from NRPE)
+# Usage :
 #
 #    sbire.pl <CFG> send newfile 
 #		Creates a new session ID for file sending
@@ -26,16 +26,10 @@ my $Version= 'Version 0.9.3';
 #    sbire.pl <CFG> info <name>
 #		Gets informations about a plugin.file (size, checksum and version if any)
 #
-#    sbire.pl <CFG> restart
-#		Relance le service nrpe. Sur les systèmes *Nix, le compte nrpe (nagios) doit être déclaré lors de 
-#		l'installationdans les sudoers de la façon suivante :
-#			echo "nagios ALL = NOPASSWD: `which service`" >>/etc/sudoers
-#		La relance n'a pas encore été testée sur Windows
-#
 #    sbire.pl <CFG> service
 #       Loops and waits for "orders" to execute. The process thus runs indefinitely. It looks for data sources
 #       defined in a "channel" list for orders documents, that have the following structure : {"ID":"<int>", 
-#       "type":"<transfert|exec|info|restart>", "file":"<base64_encrypted_content>", "name":"<filename>"}
+#       "type":"<transfert|exec|info>", "file":"<base64_encrypted_content>", "name":"<filename>"}
 #
 ####################
 
@@ -47,7 +41,7 @@ my $Version= 'Version 0.9.3';
  use strict;
  
  # Definition du fichier de configuration
- our ($pubkey,$SESSIONDIR,$ARCHIVEDIR,$PLUGINSDIR,$USE_RSA,$NRPE_SERVICE_NAME);
+ our ($pubkey,$SESSIONDIR,$ARCHIVEDIR,$PLUGINSDIR,$USE_RSA);
  our ($SERVICE);
  my $CONF = shift(@ARGV);
  
@@ -65,7 +59,6 @@ my $Version= 'Version 0.9.3';
  \$PLUGINSDIR = '/usr/local/nagios/libexec';
  
  \$USE_RSA = 1;
- \$NRPE_SERVICE_NAME = 'nrpe';
  
  1;
 __EOF__
@@ -104,8 +97,6 @@ sub run_command {
 	{ &send(@ARGS); }
  elsif ($COMMAND eq 'update') 
 	{ &update(@ARGS) }
- elsif ($COMMAND eq 'restart') 
-	{ &restart }
  elsif ($COMMAND eq 'chmod') 
 	{ &chmod(@ARGS) }
  elsif ($COMMAND eq 'info') 
@@ -215,18 +206,13 @@ sub send {
 	print "OK";
  }
  
- sub restart {
-	$_=`sudo service $NRPE_SERVICE_NAME restart`;
-	print "Service $NRPE_SERVICE_NAME restart : $_";
-}
- 
- sub run {
+sub run {
 	my ($name) = @_;
 	$_=`$name 2>&1`;
 	print;
 }
  
- sub chmod {
+sub chmod {
  	my ($name,$mod) = @_;
         $_ = "$PLUGINSDIR/$name";
 	&error("$name does not exist") unless -f;
