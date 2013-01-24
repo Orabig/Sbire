@@ -11,26 +11,32 @@ my $Version= 'Version 0.9.3';
 #
 # Usage : (must be run from NRPE)
 #
-#    sbire.pl send newfile 
+#    sbire.pl <CFG> send newfile 
 #		Creates a new session ID for file sending
 #
-#    sbire.pl send <ID> <chunk_b64> <offset>
+#    sbire.pl <CFG> send <ID> <chunk_b64> <offset>
 #		Send a new chunk (part of a new file) into the quarantine directory
 #
-#    sbire.pl update <name> <sessionID> <signature>
+#    sbire.pl <CFG> update <name> <sessionID> <signature>
 #		Creates or updates a plugin/file with the previously sent file. If sessionID has ".z" suffix, then the file must be uncompressed.
 #
-#    sbire.pl chmod <name> <chmod> 
+#    sbire.pl <CFG> chmod <name> <chmod> 
 #		Creates or updates a plugin/file with the previously sent file
 #
-#    sbire.pl info <name>
+#    sbire.pl <CFG> info <name>
 #		Gets informations about a plugin.file (size, checksum and version if any)
 #
-#    sbire.pl restart
+#    sbire.pl <CFG> restart
 #		Relance le service nrpe. Sur les systèmes *Nix, le compte nrpe (nagios) doit être déclaré lors de 
 #		l'installationdans les sudoers de la façon suivante :
 #			echo "nagios ALL = NOPASSWD: `which service`" >>/etc/sudoers
 #		La relance n'a pas encore été testée sur Windows
+#
+#    sbire.pl <CFG> service
+#       Loops and waits for "orders" to execute. The process thus runs indefinitely. It looks for data sources
+#       defined in a "channel" list for orders documents, that have the following structure : {"ID":"<int>", 
+#       "type":"<transfert|exec|info|restart>", "file":"<base64_encrypted_content>", "name":"<filename>"}
+#
 ####################
 
  use MIME::Base64;
@@ -42,6 +48,7 @@ my $Version= 'Version 0.9.3';
  
  # Definition du fichier de configuration
  our ($pubkey,$SESSIONDIR,$ARCHIVEDIR,$PLUGINSDIR,$USE_RSA,$NRPE_SERVICE_NAME);
+ our ($SERVICE);
  my $CONF = shift(@ARGV);
  
  exit(1) unless defined $CONF; # TODO : Usage
@@ -58,7 +65,7 @@ my $Version= 'Version 0.9.3';
  \$PLUGINSDIR = '/usr/local/nagios/libexec';
  
  \$USE_RSA = 1;
- \$NRPE_SERVICE_NAME = nrpe;
+ \$NRPE_SERVICE_NAME = 'nrpe';
  
  1;
 __EOF__
@@ -78,38 +85,50 @@ __EOF__
 
  my $COMMAND = shift(@ARGV);
 
+
  unless (defined $COMMAND) {
 	print "Sbire.pl $Version";
 	exit(0);
 	}
  
- if ($COMMAND eq 'send') 
-	{ &send }
+ if ($COMMAND eq 'service') 
+	{ $SERVICE=1; &service; }
+else 
+	{ run_command($COMMAND,$ARGV); }
+	
+ exit(0);
+
+sub run_command {
+	my ($COMMAND,@ARGS)=@_;
+	if ($COMMAND eq 'send') 
+	{ &send(@ARGS); }
  elsif ($COMMAND eq 'update') 
-	{ &update }
+	{ &update(@ARGS) }
  elsif ($COMMAND eq 'restart') 
 	{ &restart }
  elsif ($COMMAND eq 'chmod') 
-	{ &chmod }
+	{ &chmod(@ARGS) }
  elsif ($COMMAND eq 'info') 
-	{ &info }
+	{ &info(@ARGS) }
+ elsif ($COMMAND eq 'run') 
+	{ &run(@ARGS) }
  else 
 	{ &error("Command '$COMMAND' unknown.") }
- 
- exit(0);
- 
- sub send {
-	my $ID = shift(@ARGV);
+
+}
+
+sub send {
+	my $ID = shift;
 	if ($ID eq 'newfile') {
 		# Creation d'un nouvel ID de session
 		do {
 			$ID = int(rand(100000));
 		} until (! -f "$SESSIONDIR/$ID.chunks");
 		print $ID;
-		exit(0);
+		return;
 	}
 	# Reception d'un chunk
-	my ($chunk64,$offset) = @ARGV;
+	my ($chunk64,$offset) = @_;
 
 	# Check if offset is correct
 	my $file = "$SESSIONDIR/$ID.chunks";
@@ -120,7 +139,7 @@ __EOF__
 	{
 		local $\;
 		my $chunk = decode_base64($chunk64);
-		open OUTPUT, ">> $file" || die "Cannot append to $file: $!";
+		open OUTPUT, ">> $file" || &error("Cannot append to $file: $!");
 		binmode OUTPUT;
 		print OUTPUT $chunk;
 		close OUTPUT;
@@ -130,11 +149,10 @@ __EOF__
 	# Compute new size
 	$filesize = -s $file;
 	print "OK $filesize";
-	exit(0);
  }
  
  sub update {
-	my ($name,$ID,$signature) = @ARGV;
+	my ($name,$ID,$signature) = @_;
 	
 	my $zlib = $ID=~s/\.z$//;
 	my $chunks = "$SESSIONDIR/$ID.chunks";
@@ -149,7 +167,7 @@ __EOF__
 	my $archive="$ARCHIVEDIR/$name.$maxidx";
 	
 	# Lecture du fichier chunks
-	open INF, $chunks or die "Cannot open $chunks: $!";
+	open INF, $chunks or &error("Cannot open $chunks: $!");
 	binmode INF;
 	my $content = do { local $/; <INF> };
 	close INF;
@@ -169,20 +187,20 @@ __EOF__
 		my $rsa = new Crypt::RSA; 
 		my $PublicKey = new Crypt::RSA::Key::Public (
 							Filename => $pubkey
-						   ) || die $rsa->errstr();
+						   ) || &error($rsa->errstr());
 		my $verify = $rsa->verify (
 				Message    => $content, 
 				Signature  => $signature, 
 				Key        => $PublicKey
 			) || &error("Security check failed");		
-		&error("Security check failed") unless $verify;
+		&error("Security check failed")&&return unless $verify;
 	}
 		
 	# Archiver l'ancien fichier (s'il existe)
 	-f $plugin && ( move($plugin,$archive) || &error("Cannot backup last revision. Is $archive writtable ?") );
 	
 	# Ecrire le nouveau fichier
-	open OUTPUT, ">$plugin" || die ("Cannot write to $plugin");
+	open OUTPUT, ">$plugin" || &error ("Cannot write to $plugin")&&return;
 	binmode OUTPUT;
 	{ local $\; print OUTPUT $content; }
 	close OUTPUT;
@@ -195,7 +213,6 @@ __EOF__
 	# Supprimer le fichier de session
 	unlink($chunks);
 	print "OK";
-	exit(0);
  }
  
  sub restart {
@@ -203,8 +220,14 @@ __EOF__
 	print "Service $NRPE_SERVICE_NAME restart : $_";
 }
  
+ sub run {
+	my ($name) = @_;
+	$_=`$name 2>&1`;
+	print;
+}
+ 
  sub chmod {
- 	my ($name,$mod) = @ARGV;
+ 	my ($name,$mod) = @_;
         $_ = "$PLUGINSDIR/$name";
 	&error("$name does not exist") unless -f;
 	`chmod $mod $_`;
@@ -216,11 +239,10 @@ __EOF__
 }
  
 sub info {
- 	my ($name) = @ARGV;
+ 	my ($name) = @_;
         my $plugin = $name=~/\d$/ ? "$ARCHIVEDIR/$name" : "$PLUGINSDIR/$name";
 	unless (-f $plugin) {
-		print ("$name does not exist");
-		exit(0);
+		&error ("$name does not exist");
 		}
 	my $size = -s $plugin;
 	# Lecture du numero de version
@@ -234,10 +256,48 @@ sub info {
 	print "$name : (${size} bytes)     Version : $Version      Signature : $MD5";
  }
  
+ # Service implementation
+ 
+sub service {
+	$SERVICE = 1;
+	&read_order_list;
+	while (1) {
+		my @orders = &read_channel;
+		foreach my $order (@orders) {
+			&run_order($order);
+			}
+		sleep(5);
+	}
+}
+
+# Reads the "order list" file, which maintains the last known states of the orders (running/done/pending/sent)
+sub read_order_list {
+	
+}
+
+sub run_order {
+	my ($order)=@_;
+	my ($id,$dest,$mission,$prereq,@args)=split/\|/,$order;
+	run_command($mission,@args);
+}
+
+# Looks for orders in the given channel
+sub read_channel {
+	my $channel="$SESSIONDIR/order";
+	if (-f $channel) {
+		open CH, $channel;
+		my $order = <CH>;
+		close CH;
+		unlink $channel;
+		return ($order);
+	}
+	return (  );
+}
+ 
  sub error() {
 	my ($msg)=@_;
 	print $msg;
-	exit(1);
+	exit(1) unless $SERVICE;
  }
  
  
