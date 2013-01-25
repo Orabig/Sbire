@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-my $Version= 'Version 0.9.4';
+my $Version= 'Version 0.9.6';
 
 ####################
 #
@@ -18,13 +18,13 @@ my $Version= 'Version 0.9.4';
 #		Send a new chunk (part of a new file) into the quarantine directory
 #
 #    sbire.pl <CFG> update <name> <sessionID> <signature>
-#		Creates or updates a plugin/file with the previously sent file. If sessionID has ".z" suffix, then the file must be uncompressed.
+#		Creates or updates a plugin/file with the previously sent file. If sessionID has ".z" suffix, then the file is zipped and must be unpacked.
 #
 #    sbire.pl <CFG> chmod <name> <chmod> 
 #		Creates or updates a plugin/file with the previously sent file
 #
 #    sbire.pl <CFG> info <name>
-#		Gets informations about a plugin.file (size, checksum and version if any)
+#		Gets informations about a plugin.file (size, checksum and version if any). If name is omitted, then '*' is assumed.
 #
 #    sbire.pl <CFG> service
 #       Loops and waits for "orders" to execute. The process thus runs indefinitely. It looks for data sources
@@ -87,7 +87,7 @@ __EOF__
  if ($COMMAND eq 'service') 
 	{ $SERVICE=1; &service; }
 else 
-	{ run_command($COMMAND,$ARGV); }
+	{ run_command($COMMAND,@ARGV); }
 	
  exit(0);
 
@@ -196,11 +196,6 @@ sub send {
 	{ local $\; print OUTPUT $content; }
 	close OUTPUT;
 	
-	# Si le fichier est sbire.pl lui-même, alors ajoute le flag execute (sinon on sera coince...)
-	if ($name eq 'sbire.pl') {
-		`chmod a+x $plugin`;
-		}
-	
 	# Supprimer le fichier de session
 	unlink($chunks);
 	print "OK";
@@ -226,20 +221,33 @@ sub chmod {
  
 sub info {
  	my ($name) = @_;
-        my $plugin = $name=~/\d$/ ? "$ARCHIVEDIR/$name" : "$PLUGINSDIR/$name";
-	unless (-f $plugin) {
+	$name='*' unless defined $name;
+	my $PATH = $name=~/\d$/ ? $ARCHIVEDIR : $PLUGINSDIR;
+	my $plugin = "$PATH/$name";
+	unless (-f $plugin || $plugin=~/\*/) {
 		&error ("$name does not exist");
 		}
-	my $size = -s $plugin;
-	# Lecture du numero de version
-	open INF,$plugin || &error("Cannot open $name");
-	binmode INF;
-        $_ = do { local $/; <INF> };
-        close INF;
-	my $Version="-";
-	$Version=$1 if /Version\W+([\d\.\-]+\w*)/i;
-	my $MD5=md5_hex($_);
-	print "$name : (${size} bytes)     Version : $Version      Signature : $MD5";
+	my @FILES = glob($plugin);
+	my $multiple = @FILES>1;
+	print "Name;Size(bytes);Version;Signature" if $multiple;
+	foreach my $file (@FILES) {
+		next if -d $file;
+		my $size = -s $file;
+		# Lecture du numero de version
+		open INF,$file || &error("Cannot open $name");
+		binmode INF;
+			$_ = do { local $/; <INF> };
+			close INF;
+		my $Version="";
+		$Version=$1 if /(?:Version|Revision)\W*(\d[\d\.]+[a-z]?\b)/i;
+		my $MD5=md5_hex($_);
+		$name=$file; $name=~s/$PATH\///;
+		if ($multiple) {
+			print "$name\t${size}\t$Version\t$MD5";
+		} else {
+			print "$name \t${size} bytes \tVersion $Version \tSignature : $MD5";
+		}
+	}
  }
  
  # Service implementation

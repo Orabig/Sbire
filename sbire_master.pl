@@ -23,7 +23,7 @@ use strict;
 $\=$/;
 
 my $CONFIGFILE;
-our ($CHUNK_SIZE, $privkey, $NRPE, $USE_ZLIB_COMPRESSION, $USE_RSA);
+our ($CHUNK_SIZE, $privkey, $NRPE, $USE_ZLIB_COMPRESSION, $USE_RSA, $USE_SSH);
 {
 	# Default config file
 	$CONFIGFILE = $^O=~/Win/ ? './sbire_master.conf' : '/etc/sbire_master.conf';
@@ -41,6 +41,7 @@ our ($CHUNK_SIZE, $privkey, $NRPE, $USE_ZLIB_COMPRESSION, $USE_RSA);
 \$CHUNK_SIZE = 832;
 \$privkey = '/usr/local/nagios/bin/sbire_key.private';
 \$NRPE = '/usr/local/nagios/libexec/check_nrpe';
+\$USE_SSH = 1;
 \$USE_RSA = 1;
 \$USE_ZLIB_COMPRESSION = 1;
 1;
@@ -73,7 +74,7 @@ my ($help,$verbose);
 &usage() if defined $help;
 
 unless (defined $command) {
-	print &call_sbire('""');
+	print &call_sbire(' ');
 	exit(0);
 }
 
@@ -180,7 +181,7 @@ sub update {
 		$_ = &call_sbire($args);
 		/OK (\d+)/ or die ("Unknown sbire response : $_");
 		$offset = $1;
-		{ local $\;print "." if ($verbose); }
+		{ local $\;print "." unless ($verbose>1); }
 	}
 	# Fin de l'envoi
 	print "\nSent." if ($verbose);
@@ -213,22 +214,29 @@ sub update {
 
 sub call_sbire {
 	my ($args,$ignore_err)=@_;
-	my $cmd="$NRPE -H $dest -c sbire -a $args";
-	# print "sbire > $cmd";
+	my $nrpe_arg = $USE_SSH ? "" : "-n";
+	my $cmd;
+	if ($dest=~/^(.*):(\d+)$/) {
+		$cmd="$NRPE -H $1 -p $2 $nrpe_arg -c sbire -a \" $args\"";
+	} else {
+		$cmd="$NRPE -H $dest $nrpe_arg -c sbire -a \" $args\"";
+	}
+	print "sbire > $cmd" if ($verbose>1);
 	my $result = qx!$cmd!;
 	if ($? && !$ignore_err) {
 		print "Error on > $cmd" if ($verbose);
 		chomp $result;
 		# Analyse des erreurs connues
-		if ($result=~/sh:.*sbire.pl: Permission denied/) {
-			print "$result\nCheck sbire.pl execution status on distant server.";
-			print "Try:    chmod a+x /usr/local/";
-			exit($?);
-			}
+	#	if ($result=~/sh:.*sbire.pl: Permission denied/) {
+	#		print "$result\nCheck sbire.pl execution status on distant server.";
+	#		print "Try:    chmod a+x /usr/local/";
+	#		exit($?);
+	#		}
 		print $result;
 		exit($?);
 	}
 	chomp $result;
+	print $result if ($verbose>2);
 	return $result;
 }
 
