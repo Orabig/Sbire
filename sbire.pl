@@ -239,7 +239,7 @@ sub info {
 			$_ = do { local $/; <INF> };
 			close INF;
 		my $Version="";
-		$Version=$1 if /(?:Version|Revision)\W*(\d[\d\.]+[a-z]?\b)/i;
+		$Version=$1 if /(?:Version|Revision)\W*(\d[\d\.]*[a-z]?\b)/i;
 		my $MD5=md5_hex($_);
 		$name=$file; $name=~s/$PATH\///;
 		if ($multiple) {
