@@ -159,12 +159,12 @@ sub update {
 	# Compression
 	my $zcontent;
 	if ($USE_ZLIB_COMPRESSION) {
-		use Compress::Zlib;
+		eval("use Compress::Zlib");
 		{
 			local $\;
 			print "Compressing..." if ($verbose);
 		}
-		my $zcontent=compress($content, Z_BEST_COMPRESSION);
+		my $zcontent=compress($content);
 		print " Ratio : ".int(100-100*length($zcontent)/length($content))."%" if ($verbose);
 	} else { $zcontent=$content; }
 
