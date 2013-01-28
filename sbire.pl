@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-my $Version= 'Version 0.9.6';
+my $Version= 'Version 0.9.6b';
 
 ####################
 #
@@ -165,7 +165,7 @@ sub send {
 	
 	# Decompression
 	if ($zlib) {
-		use Compress::Zlib;
+		eval("use Compress::Zlib");
 		$content = uncompress($content);
 		}
 	
