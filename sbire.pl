@@ -62,6 +62,7 @@ my $Version= 'Version 0.9.7';
 	print CF <<__EOF__;
  # sbire.pl configuration file.
  \$pubkey = '/usr/local/nagios/bin/sbire_key.pub';
+ \$OUTPUT_LIMIT = 1024;
  
  \$SESSIONDIR = '/tmp/sbire';
  \$ARCHIVEDIR = '/usr/local/nagios/libexec/archive';
