@@ -215,18 +215,30 @@ sub update {
 sub call_sbire {
 	my ($args,$ignore_err)=@_;
 	my $nrpe_arg = $USE_SSH ? "" : "-n";
-	my $cmd;
+	my $nrpe_cmd;
 	if ($dest=~/^(.*):(\d+)$/) {
-		$cmd="$NRPE -H $1 -p $2 $nrpe_arg -c sbire -a \" $args\"";
+		$nrpe_cmd="$NRPE -H $1 -p $2 $nrpe_arg";
 	} else {
-		$cmd="$NRPE -H $dest $nrpe_arg -c sbire -a \" $args\"";
+		$nrpe_cmd="$NRPE -H $dest $nrpe_arg";
 	}
+
+	my $cmd="$nrpe_cmd -c sbire -a \" $args\"";
 	print "sbire > $cmd" if ($verbose>1);
 	my $result = qx!$cmd!;
+	
+	# Loop : while the result ends with ___Cont:xxx___, then another request must be done
+	while ($result=~/___Cont:(\d+)___$/) {
+		my $remove=$&;
+		$cmd="$nrpe_cmd -c sbire -a \" continue $1\"";
+		print "sbire > $cmd" if ($verbose>1);
+		$result=substr($result,0,length($result)-length($remove)-1);
+		$result .= qx!$cmd!;
+	}
+	
 	if ($? && !$ignore_err) {
 		print "Error on > $cmd" if ($verbose);
 		chomp $result;
-		# Analyse des erreurs connues
+		# Analyse des erreurs connues (et affichage de solutions appropriees)
 	#	if ($result=~/sh:.*sbire.pl: Permission denied/) {
 	#		print "$result\nCheck sbire.pl execution status on distant server.";
 	#		print "Try:    chmod a+x /usr/local/";
@@ -272,4 +284,5 @@ sub getOptions() {
                         }
                 }
         }
+
 

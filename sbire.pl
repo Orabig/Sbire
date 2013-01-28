@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-my $Version= 'Version 0.9.6b';
+my $Version= 'Version 0.9.7';
 
 ####################
 #
@@ -10,6 +10,9 @@ my $Version= 'Version 0.9.6b';
 # Remote control script
 #
 # Usage :
+#
+#    sbire.pl <CFG> send newfile 
+#		Creates a new session ID for file sending
 #
 #    sbire.pl <CFG> send newfile 
 #		Creates a new session ID for file sending
@@ -26,6 +29,12 @@ my $Version= 'Version 0.9.6b';
 #    sbire.pl <CFG> info <name>
 #		Gets informations about a plugin.file (size, checksum and version if any). If name is omitted, then '*' is assumed.
 #
+#    Note : When the output of a command is longer than $OUTPUT_LIMIT (def. 1024), then it's truncated and ends with ___Cont:<id>___. The following
+#           of the output may then be retreived with the following command.
+#
+#    sbire.pl <CFG> continue <sessionID>
+#		Gets the output store in the given sessionID. (see above note)
+#
 #    sbire.pl <CFG> service
 #       Loops and waits for "orders" to execute. The process thus runs indefinitely. It looks for data sources
 #       defined in a "channel" list for orders documents, that have the following structure : {"ID":"<int>", 
@@ -37,11 +46,11 @@ my $Version= 'Version 0.9.6b';
  use File::Copy;
  use Digest::MD5 qw(md5_hex);
  
- $\=$/;
  use strict;
  
  # Definition du fichier de configuration
- our ($pubkey,$SESSIONDIR,$ARCHIVEDIR,$PLUGINSDIR,$USE_RSA);
+ our ($pubkey,$SESSIONDIR,$ARCHIVEDIR,$PLUGINSDIR,$USE_RSA,$OUTPUT_LIMIT);
+ $OUTPUT_LIMIT = 1024;
  our ($SERVICE);
  my $CONF = shift(@ARGV);
  
@@ -94,15 +103,17 @@ else
 sub run_command {
 	my ($COMMAND,@ARGS)=@_;
 	if ($COMMAND eq 'send') 
-	{ &send(@ARGS); }
+	{ &output(&send(@ARGS)) }
  elsif ($COMMAND eq 'update') 
-	{ &update(@ARGS) }
+	{ &output(&update(@ARGS)) }
  elsif ($COMMAND eq 'chmod') 
-	{ &chmod(@ARGS) }
+	{ &output(&chmod(@ARGS)) }
  elsif ($COMMAND eq 'info') 
-	{ &info(@ARGS) }
+	{ &output(&info(@ARGS)) }
  elsif ($COMMAND eq 'run') 
-	{ &run(@ARGS) }
+	{ &output(&run(@ARGS)) }
+ elsif ($COMMAND eq 'continue') 
+	{ &output(&contn(@ARGS)) }
  else 
 	{ &error("Command '$COMMAND' unknown.") }
 
@@ -112,10 +123,8 @@ sub send {
 	my $ID = shift;
 	if ($ID eq 'newfile') {
 		# Creation d'un nouvel ID de session
-		do {
-			$ID = int(rand(100000));
-		} until (! -f "$SESSIONDIR/$ID.chunks");
-		print $ID;
+		$ID = &newChunkId();
+		return $ID;
 		return;
 	}
 	# Reception d'un chunk
@@ -127,19 +136,21 @@ sub send {
 	&error("Bad offset") unless ($offset == $filesize);
 	
 	# Append chunk to session file
-	{
-		local $\;
-		my $chunk = decode_base64($chunk64);
-		open OUTPUT, ">> $file" || &error("Cannot append to $file: $!");
-		binmode OUTPUT;
-		print OUTPUT $chunk;
-		close OUTPUT;
-	}
+	&write_to_file($file , decode_base64($chunk64));
 	
 	&error("Cannot write to $file") unless -e $file;
 	# Compute new size
 	$filesize = -s $file;
-	print "OK $filesize";
+	return "OK $filesize";
+ }
+ 
+ sub write_to_file() {
+	my ($file,$chunk)=@_;
+	local $\;
+	open OUTPUT, ">> $file" || &error("Cannot append to $file: $!");
+	binmode OUTPUT;
+	print OUTPUT $chunk;
+	close OUTPUT;
  }
  
  sub update {
@@ -198,13 +209,31 @@ sub send {
 	
 	# Supprimer le fichier de session
 	unlink($chunks);
-	print "OK";
+	return "OK";
+ }
+ 
+ sub contn {
+	my ($ID) = @_;
+	
+	my $chunks = "$SESSIONDIR/$ID.chunks";
+	
+	# Verification : le fichier doit exister
+	&error("Session $ID does not exist.") unless (-f $chunks);
+	
+	# Lecture du fichier chunks
+	open INF, $chunks or &error("Cannot open $chunks: $!");
+	binmode INF;
+	my $content = do { local $/; <INF> };
+	close INF;
+	# Supprimer le fichier de session
+	unlink($chunks);
+	return $content;
  }
  
 sub run {
 	my ($name) = @_;
-	$_=`$name 2>&1`;
-	print;
+	return "Security Error : cannot use this command without RSA security enabled" unless ($USE_RSA);
+	return `$name 2>&1`;
 }
  
 sub chmod {
@@ -216,7 +245,7 @@ sub chmod {
 	$result .= (-r) ? 'r':'-';
 	$result .= (-w) ? 'w':'-';
 	$result .= (-x) ? 'x':'-';
-	print "$name : $result";
+	return "$name : $result";
 }
  
 sub info {
@@ -229,7 +258,8 @@ sub info {
 		}
 	my @FILES = glob($plugin);
 	my $multiple = @FILES>1;
-	print "Name;Size(bytes);Version;Signature" if $multiple;
+	my $output;
+	$output = "Name\tSize(bytes)\tVersion\tSignature\n" if $multiple;
 	foreach my $file (@FILES) {
 		next if -d $file;
 		my $size = -s $file;
@@ -243,11 +273,12 @@ sub info {
 		my $MD5=md5_hex($_);
 		$name=$file; $name=~s/$PATH\///;
 		if ($multiple) {
-			print "$name\t${size}\t$Version\t$MD5";
+			$output .= "$name\t${size}\t$Version\t$MD5\n";
 		} else {
-			print "$name \t${size} bytes \tVersion $Version \tSignature : $MD5";
+			$output .= "$name \t${size} bytes \tVersion $Version \tSignature : $MD5\n";
 		}
 	}
+	return $output;
  }
  
  # Service implementation
@@ -287,11 +318,40 @@ sub read_channel {
 	}
 	return (  );
 }
+
+sub newChunkId() {
+	my $ID;
+	do {
+		$ID = int(rand(100000));
+	} until (! -f "$SESSIONDIR/$ID.chunks");
+	return $ID;
+}
  
  sub error() {
 	my ($msg)=@_;
 	print $msg;
 	exit(1) unless $SERVICE;
+ }
+ 
+ sub output() {
+	my ($msg)=@_;
+	my $POSTFIX = "___Cont:0000000___";
+	if (length($msg) >= $OUTPUT_LIMIT) {
+		my $ID = &newChunkId();
+		$POSTFIX =~ s/0+/$ID/;
+		my $cutAt = $OUTPUT_LIMIT - (1+length $POSTFIX);
+		
+		my $pre_msg = substr($msg,0,$cutAt);
+		my $post_msg = substr($msg,$cutAt);
+
+		my $file = "$SESSIONDIR/$ID.chunks";
+		&write_to_file($file ,$post_msg);
+		
+		$msg = $pre_msg . $POSTFIX;
+	}
+	local $\;
+	print $msg;
+	exit(0);
  }
  
  
