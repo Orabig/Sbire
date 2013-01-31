@@ -132,8 +132,6 @@ sub run_command {
 	{ &output(&send(@ARGS)) }
  elsif ($COMMAND eq 'update') 
 	{ &output(&update(@ARGS)) }
- elsif ($COMMAND eq 'chmod') 
-	{ &output(&chmod(@ARGS)) }
  elsif ($COMMAND eq 'info') 
 	{ &output(&info(@ARGS)) }
  elsif ($COMMAND eq 'run') 
@@ -262,18 +260,6 @@ sub run {
 	my ($name) = @_;
 	return "Security Error : cannot use this command without RSA security enabled" unless ($USE_RSA);
 	return `$name 2>&1`;
-}
- 
-sub chmod {
- 	my ($name,$mod) = @_;
-        $_ = "$PLUGINSDIR/$name";
-	&error("$name does not exist") unless -f;
-	`chmod $mod $_`;
-	my $result="";
-	$result .= (-r) ? 'r':'-';
-	$result .= (-w) ? 'w':'-';
-	$result .= (-x) ? 'x':'-';
-	return "$name : $result";
 }
  
 sub info {

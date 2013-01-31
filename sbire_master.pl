@@ -14,7 +14,6 @@
 # NRPE plugins update/manage master script
 #
 # Usage : sbire_master.pl -H <IP> -P NRPE|SSH -c upload -n <name> -f <file> [ -v 1 ]
-#         sbire_master.pl -H <IP> -P NRPE|SSH -c chmod -n <name> -m <mod>
 #         sbire_master.pl -H <IP> -P NRPE|SSH -c info -n <name>
 #         sbire_master.pl -H <IP> -P NRPE|SSH -c restart
 # 
@@ -58,7 +57,7 @@ die ("NRPE could not be found at $NRPE") unless (-x $NRPE);
 use MIME::Base64; 
 use Digest::MD5 qw(md5_hex);
  
-my ($protocol,$command,$dest,$file,$name,$mod,$NRPEnossh);
+my ($protocol,$command,$dest,$file,$name,$cmdline,$NRPEnossh);
 my ($help,$verbose);
 &getOptions(
 	"P" => \$protocol,
@@ -68,7 +67,7 @@ my ($help,$verbose);
 	"n" => \$name,
 	"S" => \$NRPEnossh,
 	"f" => \$file,
-	"m" => \$mod,
+	"e" => \$cmdline,
 	"h" => \$help
 );
 	
@@ -87,15 +86,15 @@ if ($command eq 'upload') {
 	&restart();
 } elsif ($command eq 'info') {
 	&info($name);
-} elsif ($command eq 'chmod') {
-	&chmod($name,$mod);
+} elsif ($command eq 'run') {
+	&run($name,$cmdline);
 } else {
 	&error("Command '$command' unknown");
 }
 
 sub usage {
 	print "Usage : sbire_master.pl -H <IP> -c upload -n <name> -f <file> [ -v 1 ]";
-	print "        sbire_master.pl -H <IP> -c chmod -n <name> -m <mod>";
+	print "        sbire_master.pl -H <IP> -c run -e \"<cmdline>\"";
 	print "        sbire_master.pl -H <IP> -c info -n <name>";
 	print "        sbire_master.pl -H <IP> -c restart";
 }
@@ -107,9 +106,9 @@ sub error {
 }
 # -----------------------------------------------
 
-sub chmod {
-	my ($name,$mod)=@_;
-	print &call_sbire("chmod $name $mod");
+sub run {
+	my ($name,$cmdline)=@_;
+	print &call_sbire("run $name \"$cmdline\"");
 }
 
 sub info {
