@@ -1,0 +1,13 @@
+# Server list
+# Alias	IP/Name		Protocol
+
+# Default attributes :
+	USE-RSA		1
+	COMPRESSION	0
+	NRPE-USE-SSH	0
+	NRPE-PORT	3180
+
+TEST		-		LOCAL
+HPLAVIL02	194.2.53.44	NRPE
+Frontal128	192.168.100.128	NRPE
+	NRPE-PORT	3181

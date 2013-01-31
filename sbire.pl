@@ -11,8 +11,9 @@ my $Version= 'Version 0.9.7';
 #
 # Usage :
 #
-#    sbire.pl <CFG> send newfile 
-#		Creates a new session ID for file sending
+#    sbire.pl <CFG> 
+#		Returns version of the current script, as well as the actual configuration of its protocol
+#       (NO_RSA / RSA & publickey, input limit, output limit)
 #
 #    sbire.pl <CFG> send newfile 
 #		Creates a new session ID for file sending
@@ -61,14 +62,34 @@ my $Version= 'Version 0.9.7';
 	open CF, ">$CONF" || &error("Cannot write $CONF");
 	print CF <<__EOF__;
  # sbire.pl configuration file.
- \$pubkey = '/usr/local/nagios/bin/sbire_key.pub';
  \$OUTPUT_LIMIT = 1024;
  
  \$SESSIONDIR = '/tmp/sbire';
  \$ARCHIVEDIR = '/usr/local/nagios/libexec/archive';
  \$PLUGINSDIR = '/usr/local/nagios/libexec';
  
- \$USE_RSA = 1;
+####################################################
+#
+# if USE_RSA is set to 1, then RSA protocol is used
+# between master and sbires. This means that files
+# sent by 'send' command are signed with master's
+# private key. Direct commands are signed too.
+#
+# Sbires must then know the public key ($pubkey)
+#
+# if USE_RSA_DC_BASED_IMPLEMENTATION then the
+# dc command is used to implement the RSA
+# algorithms. If not, then the standard library
+# Crypt::RSA is used and must be present in the
+# system.
+# If the first case, Windows system may use the
+# Cygwin implementation (http://gnuwin32.sourceforge.net/packages/bc.htm)
+#
+####################################################
+# \$USE_RSA = 1;
+# \$USE_RSA_DC_BASED_IMPLEMENTATION = 0;
+
+# \$pubkey = '/usr/local/nagios/bin/sbire_key.pub';
  
  1;
 __EOF__
@@ -90,7 +111,11 @@ __EOF__
 
 
  unless (defined $COMMAND) {
-	print "Sbire.pl $Version";
+	my $infos = "Sbire.pl $Version ";
+	my @more = ();
+	# TODO
+	push @more, $USE_RSA ? "RSA:pub=$pubkey" : "NORSA";
+	print $infos." (" . join(", ",@more).")\n";
 	exit(0);
 	}
  
@@ -178,6 +203,7 @@ sub send {
 	# Decompression
 	if ($zlib) {
 		eval("use Compress::Zlib");
+		&error("Compress::Zlib not present") if ($@);
 		$content = uncompress($content);
 		}
 	
@@ -187,6 +213,7 @@ sub send {
 	
 	if ($USE_RSA) {
 		eval("use Crypt::RSA");
+		&error("Crypt::RSA not present") if ($@);
 		my $rsa = new Crypt::RSA; 
 		my $PublicKey = new Crypt::RSA::Key::Public (
 							Filename => $pubkey
@@ -255,7 +282,7 @@ sub info {
 	my $PATH = $name=~/\d$/ ? $ARCHIVEDIR : $PLUGINSDIR;
 	my $plugin = "$PATH/$name";
 	unless (-f $plugin || $plugin=~/\*/) {
-		&error ("$name does not exist");
+		&error ("$name does not exist in the plugin folder ($PATH)");
 		}
 	my @FILES = glob($plugin);
 	my $multiple = @FILES>1;

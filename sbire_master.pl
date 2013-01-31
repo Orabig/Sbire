@@ -4,18 +4,19 @@
 #
 # sbire_master.pl
 #
-# Version 0.9.2
+# Version 0.9.3
 #
 # Historique : 0.9.1 :  First public revision
 #              0.9.2 :  Improved configuration file
 #						Changed 'update' command to 'upload'
+#              0.9.3 :  Different protocols may be used (LOCAL and NRPE so far)
 # 
 # NRPE plugins update/manage master script
 #
-# Usage : sbire_master.pl -H <IP> -c upload -n <name> -f <file> [ -v 1 ]
-#         sbire_master.pl -H <IP> -c chmod -n <name> -m <mod>
-#         sbire_master.pl -H <IP> -c info -n <name>
-#         sbire_master.pl -H <IP> -c restart
+# Usage : sbire_master.pl -H <IP> -P NRPE|SSH -c upload -n <name> -f <file> [ -v 1 ]
+#         sbire_master.pl -H <IP> -P NRPE|SSH -c chmod -n <name> -m <mod>
+#         sbire_master.pl -H <IP> -P NRPE|SSH -c info -n <name>
+#         sbire_master.pl -H <IP> -P NRPE|SSH -c restart
 # 
 ####################
 
@@ -57,19 +58,21 @@ die ("NRPE could not be found at $NRPE") unless (-x $NRPE);
 use MIME::Base64; 
 use Digest::MD5 qw(md5_hex);
  
-my ($command,$dest,$file,$name,$mod);
+my ($protocol,$command,$dest,$file,$name,$mod,$NRPEnossh);
 my ($help,$verbose);
 &getOptions(
+	"P" => \$protocol,
 	"c" => \$command,
 	"H" => \$dest,
 	"v" => \$verbose,
 	"n" => \$name,
+	"S" => \$NRPEnossh,
 	"f" => \$file,
 	"m" => \$mod,
 	"h" => \$help
 );
 	
-&error("Name must not contain special characters (only alpha and .)") if $name=~/[^\w\.]/;
+&error("Name ($name) must not contain special characters (only alpha and .)") if $name=~/[^\w\.]/;
 &error("Destination (-H) is mandatory") unless defined $dest;
 &usage() if defined $help;
 
@@ -142,7 +145,7 @@ sub update {
 	close INF;
 	
 	# Verification de la version du fichier
-	$_ = &call_sbire("info $name");
+	$_ = &call_sbire("info $name",1);
 	if (/Signature\W+([\w]+)/) {
 		my $md5=$1;
 		# Verification de notre propre signature
@@ -214,22 +217,16 @@ sub update {
 
 sub call_sbire {
 	my ($args,$ignore_err)=@_;
-	my $nrpe_arg = $USE_SSH ? "" : "-n";
-	my $nrpe_cmd;
-	if ($dest=~/^(.*):(\d+)$/) {
-		$nrpe_cmd="$NRPE -H $1 -p $2 $nrpe_arg";
-	} else {
-		$nrpe_cmd="$NRPE -H $dest $nrpe_arg";
-	}
 
-	my $cmd="$nrpe_cmd -c sbire -a \" $args\"";
+	my $cmd=&buildCmd($args);
+	
 	print "sbire > $cmd" if ($verbose>1);
 	my $result = qx!$cmd!;
 	
 	# Loop : while the result ends with ___Cont:xxx___, then another request must be done
 	while ($result=~/___Cont:(\d+)___$/) {
 		my $remove=$&;
-		$cmd="$nrpe_cmd -c sbire -a \" continue $1\"";
+		$cmd=&buildCmd("continue $1");
 		print "sbire > $cmd" if ($verbose>1);
 		$result=substr($result,0,length($result)-length($remove)-1);
 		$result .= qx!$cmd!;
@@ -250,6 +247,26 @@ sub call_sbire {
 	chomp $result;
 	print $result if ($verbose>2);
 	return $result;
+}
+
+sub buildCmd() {
+	my ($args)=@_;
+	my $cmd;
+	if (uc $protocol eq 'NRPE') {
+		my $nrpe_arg = $NRPEnossh ? "" : "-n";
+		my $nrpe_cmd;
+		if ($dest=~/^(.*):(\d+)$/) {
+			$nrpe_cmd="$NRPE -H $1 -p $2 $nrpe_arg";
+		} else {
+			$nrpe_cmd="$NRPE -H $dest $nrpe_arg";
+		}
+		$cmd = $cmd="$nrpe_cmd -c sbire -a \" $args\"";
+	} elsif (uc $protocol eq 'LOCAL') {
+		$cmd="./sbire.pl /etc/sbire.cfg $args";
+	} else {
+		&error("Unkown protocol '$protocol'.");
+	}
+	return $cmd;
 }
 
 sub getOptions() {
