@@ -135,7 +135,7 @@ sub restart {
 
 sub update {
 	my ($file,$name,$verbose)=@_;
-
+	
 	# Lecture du fichier
 	print "Reading file" if ($verbose);
 	open INF, $file or die "\nCan't open $file: $!\n";
@@ -145,10 +145,10 @@ sub update {
 	
 	# Verification de la version du fichier
 	$_ = &call_sbire("info $name",1);
+	my $mymd=md5_hex($content);
 	if (/Signature\W+([\w]+)/) {
 		my $md5=$1;
 		# Verification de notre propre signature
-		my $mymd=md5_hex($content);
 		if ($md5 eq $mymd) {
 			print "Files are identical. Skip...";
 			exit(0);
@@ -193,17 +193,10 @@ sub update {
 	# Calcul de la signature
 	my $signature;
 	if ($USE_RSA) {
-		eval("use Crypt::RSA");
-		my $rsa = new Crypt::RSA;
-		my $myPrivateKey = new Crypt::RSA::Key::Private (
-							Filename => $privkey
-						   ) || die $rsa->errstr();
-						   
-		$signature =  $rsa->sign ( 
-				Message    => $content, 
-				Key        => $myPrivateKey
-			) || die $rsa->errstr();
-		$signature=encode_base64($signature,'');
+		my ($k,$n)=('62a03c0df0b96335047a12923a7d20bc2b7bb07c59aba2c4b094fc7d54392e8a2e7606cb5d574407640f4bb4e0ea6aeb7fff0000ffff0000ffff0000ffff0001','12004001208404a43f00502200b204602600c00001da894922433e4601a2c85024024001418004602404240109301008140000000142404002010000000000001');
+		# pub=(10001,'12004001208404a43f00502200b204602600c00001da894922433e4601a2c85024024001418004602404240109301008140000000142404002010000000000001');
+		$signature = rsaCrypt($mymd,$k,$n);
+		$signature=encode_base64($signature,'');	
 	} else {
 		$signature="unsigned";
 	}
@@ -214,10 +207,31 @@ sub update {
 	print;
 }		
 
+sub rsaCrypt() {
+	my ($content,$k,$n)=@_;
+	$\=$/;
+	local $/;
+	$/=unpack('H*',$content);
+	my $temp=&createTempFile();
+	open DC,">$temp";
+	print DC "16dio\U${k}SK$/SM$n\EsN0p[lN*1lK[d2%Sa2/d0<X+d*lMLa^*lN%0]dsXx++lMlN/dsM0<j]dsjxp";
+	close DC;
+	$_=`dc $temp`;
+	unlink($temp);
+	s/\W//g;
+	$_=pack('H*',/((..)*)$/);
+ }
+ 
+ sub createTempFile() {
+	use POSIX;
+	return tmpnam();
+	}
+
 sub call_sbire {
 	my ($args,$ignore_err)=@_;
 
-	my $cmd=&buildCmd($args);
+	$args=~s/"/\\\\"/g;
+	my $cmd=&buildCmd($args); 
 	
 	print "sbire > $cmd" if ($verbose>1);
 	my $result = qx!$cmd!;

@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-my $Version= 'Version 0.9.7';
+my $Version= 'Version 0.9.8';
 
 ####################
 #
@@ -50,7 +50,7 @@ my $Version= 'Version 0.9.7';
  use strict;
  
  # Definition du fichier de configuration
- our ($pubkey,$SESSIONDIR,$ARCHIVEDIR,$PLUGINSDIR,$USE_RSA,$OUTPUT_LIMIT);
+ our ($pubkey,$SESSIONDIR,$ARCHIVEDIR,$PLUGINSDIR,$USE_RSA,$USE_RSA_DC_BASED_IMPLEMENTATION,$OUTPUT_LIMIT);
  $OUTPUT_LIMIT = 1024;
  our ($SERVICE);
  my $CONF = shift(@ARGV);
@@ -114,7 +114,7 @@ __EOF__
 	my $infos = "Sbire.pl $Version ";
 	my @more = ();
 	# TODO
-	push @more, $USE_RSA ? "RSA:pub=$pubkey" : "NORSA";
+	push @more, $USE_RSA ? "RSA:pub=$pubkey" : "RSA:no";
 	print $infos." (" . join(", ",@more).")\n";
 	exit(0);
 	}
@@ -208,20 +208,14 @@ sub send {
 	# Verification : la signature doit être correcte
 	
 	$signature=decode_base64($signature);
-	
+
 	if ($USE_RSA) {
-		eval("use Crypt::RSA");
-		&error("Crypt::RSA not present") if ($@);
-		my $rsa = new Crypt::RSA; 
-		my $PublicKey = new Crypt::RSA::Key::Public (
-							Filename => $pubkey
-						   ) || &error($rsa->errstr());
-		my $verify = $rsa->verify (
-				Message    => $content, 
-				Signature  => $signature, 
-				Key        => $PublicKey
-			) || &error("Security check failed");		
-		&error("Security check failed")&&return unless $verify;
+	if ($USE_RSA_DC_BASED_IMPLEMENTATION) {
+		&checkRsaSignatureNoLib(md5_hex($content),$signature,$pubkey);
+		}
+	else {
+		&checkRsaSignature(md5_hex($content),$signature,$pubkey);
+		}
 	}
 		
 	# Archiver l'ancien fichier (s'il existe)
@@ -237,6 +231,49 @@ sub send {
 	unlink($chunks);
 	return "OK";
  }
+ 
+ sub checkRsaSignature() {
+	my ($content,$signature,$pubkeyfile)=@_;
+	eval("use Crypt::RSA");
+	&error("Crypt::RSA not present") if ($@);
+	my $rsa = new Crypt::RSA; 
+	my $PublicKey = new Crypt::RSA::Key::Public (
+						Filename => $pubkeyfile
+					   ) || &error($rsa->errstr());
+	my $verifyOK = $rsa->verify (
+			Message    => $content, 
+			Signature  => $signature, 
+			Key        => $PublicKey
+		);		
+	&error("Security check failed.")&&return unless $verifyOK;
+ }
+ 
+ sub checkRsaSignatureNoLib() {
+	my ($content,$signature,$pubkeyfile)=@_;
+	my ($k,$n)=&readPublicKey($pubkeyfile);
+	$_=rsaCrypt($signature,$k,$n);
+	&error("Security check failed.")&&return unless ($content eq $_);
+} 
+
+sub rsaCrypt() {
+	my ($content,$k,$n)=@_;
+	$\=$/;
+	local $/;
+	$/=unpack('H*',$content);
+	my $temp=&createTempFile();
+	open DC,">$temp";
+	print DC "16dio\U${k}SK$/SM$n\EsN0p[lN*1lK[d2%Sa2/d0<X+d*lMLa^*lN%0]dsXx++lMlN/dsM0<j]dsjxp";
+	close DC;
+	$_=`dc $temp`;
+	unlink($temp);
+	s/\W//g;
+	$_=pack('H*',/((..)*)$/);
+ }
+ 
+sub readPublicKey() {
+   return (
+   10001,'12004001208404a43f00502200b204602600c00001da894922433e4601a2c85024024001418004602404240109301008140000000142404002010000000000001');
+}
  
  sub contn {
 	my ($ID) = @_;
@@ -257,9 +294,10 @@ sub send {
  }
  
 sub run {
-	my ($name) = @_;
+	my ($name) = join " ",@_;
 	return "Security Error : cannot use this command without RSA security enabled" unless ($USE_RSA);
-	return `$name 2>&1`;
+	my $result = `$name 2>&1`;
+	return "> $name\n$result";
 }
  
 sub info {
@@ -331,6 +369,11 @@ sub read_channel {
 		return ($order);
 	}
 	return (  );
+}
+
+sub createTempFile() {
+	my $ID=&newChunkId();
+	return "$SESSIONDIR/$ID.chunks";
 }
 
 sub newChunkId() {
