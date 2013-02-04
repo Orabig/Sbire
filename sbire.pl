@@ -250,14 +250,13 @@ sub send {
  
  sub checkRsaSignatureNoLib() {
 	my ($content,$signature,$pubkeyfile)=@_;
-	my ($k,$n)=&readPublicKey($pubkeyfile);
+	my ($k,$n)=&readKeyFile($pubkeyfile);
 	$_=rsaCrypt($signature,$k,$n);
 	&error("Security check failed.")&&return unless ($content eq $_);
 } 
 
 sub rsaCrypt() {
 	my ($content,$k,$n)=@_;
-	$\=$/;
 	local $/;
 	$/=unpack('H*',$content);
 	my $temp=&createTempFile();
@@ -270,9 +269,15 @@ sub rsaCrypt() {
 	$_=pack('H*',/((..)*)$/);
  }
  
-sub readPublicKey() {
-   return (
-   10001,'12004001208404a43f00502200b204602600c00001da894922433e4601a2c85024024001418004602404240109301008140000000142404002010000000000001');
+sub readKeyFile() {
+	my($file)=@_;
+	open K,$file;
+	local $/;
+	$_=<K>;
+	close K;
+	s/\W//g;
+	my(undef,$k,$n)=split/0x/;
+	return ($k,$n);
 }
  
  sub contn {
