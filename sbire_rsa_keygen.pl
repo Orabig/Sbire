@@ -12,9 +12,10 @@
 #    sbire_keygen.pl
 #
 ####################
+use strict;
 
 my $PATH=shift @ARGV;
-$PATH="." unless defined $ATH;
+$PATH="." unless defined $PATH;
 
 my $pubkey = "$PATH/sbire_key.pub";
 my $privkey = "$PATH/sbire_key.private";
@@ -22,7 +23,6 @@ my $privkey = "$PATH/sbire_key.private";
 die "$pubkey File already exist" if (-f $pubkey);
 die "$privkey File already exist" if (-f $privkey);
 	
-use strict;
 
 use Crypt::RSA;
  
