@@ -381,6 +381,7 @@ sub info {
 	my $PATH = $name=~/\d$/ ? $ARCHIVEDIR : $BASEDIR;
 	my $plugin = "$PATH/$name";
 	$plugin=$PUBLIC_KEY if ($name eq 'PUBLIC_KEY');
+	$plugin.="/*" if (-d $plugin);
 	unless (-f $plugin || $plugin=~/\*/) {
 		&error ("$name does not exist in the plugin folder ($PATH)");
 		}
