@@ -71,7 +71,6 @@ my ($help,$verbose);
 	"h" => \$help
 );
 	
-&error("Name ($name) must not contain special characters (only alpha and .)") if $name=~/[^\w\.]/;
 &error("Destination (-H) is mandatory") unless defined $dest;
 &usage() if defined $help;
 
@@ -86,6 +85,8 @@ if ($command eq 'upload') {
 	&restart();
 } elsif ($command eq 'info') {
 	&info($name);
+} elsif ($command eq 'config') {
+	&config($cmdline);
 } elsif ($command eq 'run') {
 	&run($name,$cmdline);
 } else {
@@ -114,6 +115,11 @@ sub run {
 sub info {
 	my ($name)=@_;
 	print &call_sbire("info $name");
+}
+
+sub config {
+	my ($name)=@_;
+	print &call_sbire("config $name");
 }
 
 sub restart {	
@@ -193,9 +199,7 @@ sub update {
 	# Calcul de la signature
 	my $signature;
 	if ($USE_RSA) {
-		my ($k,$n)=#('62a03c0df0b96335047a12923a7d20bc2b7bb07c59aba2c4b094fc7d54392e8a2e7606cb5d574407640f4bb4e0ea6aeb7fff0000ffff0000ffff0000ffff0001','12004001208404a43f00502200b204602600c00001da894922433e4601a2c85024024001418004602404240109301008140000000142404002010000000000001');
-		# pub=(10001,'12004001208404a43f00502200b204602600c00001da894922433e4601a2c85024024001418004602404240109301008140000000142404002010000000000001');
-		readKeyFile($privkey);
+		my ($k,$n)=readKeyFile($privkey);
 		$signature = rsaCrypt($mymd,$k,$n);
 		$signature=encode_base64($signature,'');	
 	} else {

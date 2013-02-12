@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-my $Version= 'Version 0.9.8';
+my $Version= 'Version 0.9.10';
 
 ####################
 #
@@ -23,6 +23,7 @@ my $Version= 'Version 0.9.8';
 #
 #    sbire.pl <CFG> update <name> <sessionID> <signature>
 #		Creates or updates a plugin/file with the previously sent file. If sessionID has ".z" suffix, then the file is zipped and must be unpacked.
+#       If <name>=PUBLIC_KEY then the public key file is written
 #
 #    sbire.pl <CFG> chmod <name> <chmod> 
 #		Creates or updates a plugin/file with the previously sent file
@@ -36,6 +37,9 @@ my $Version= 'Version 0.9.8';
 #    sbire.pl <CFG> continue <sessionID>
 #		Gets the output store in the given sessionID. (see above note)
 #
+#    sbire.pl <CFG> config <line>
+#		Write the given line in the configuration file. Will not work if the config is locked.
+#
 #    sbire.pl <CFG> service
 #       Loops and waits for "orders" to execute. The process thus runs indefinitely. It looks for data sources
 #       defined in a "channel" list for orders documents, that have the following structure : {"ID":"<int>", 
@@ -46,12 +50,18 @@ my $Version= 'Version 0.9.8';
  use MIME::Base64;
  use File::Copy;
  use Digest::MD5 qw(md5_hex);
+ use File::Basename;
  
  use strict;
  
  # Definition du fichier de configuration
- our ($pubkey,$SESSIONDIR,$ARCHIVEDIR,$PLUGINSDIR,$USE_RSA,$USE_RSA_DC_BASED_IMPLEMENTATION,$OUTPUT_LIMIT);
+ our ($PUBLIC_KEY,$SESSIONDIR,$ARCHIVEDIR,$BASEDIR,$USE_RSA,$USE_RSA_DC_BASED_IMPLEMENTATION,$OUTPUT_LIMIT,$ALLOW_UNSECURE_UPLOAD,$CONFIG_LOCKED,$NRPE_SERVICE_NAME);
+ # Default values (security)
+ $CONFIG_LOCKED = 1;
  $OUTPUT_LIMIT = 1024;
+ $ALLOW_UNSECURE_UPLOAD = 0;
+ $NRPE_SERVICE_NAME = 'nrpe';
+ 
  our ($SERVICE);
  my $CONF = shift(@ARGV);
  
@@ -62,11 +72,11 @@ my $Version= 'Version 0.9.8';
 	open CF, ">$CONF" || &error("Cannot write $CONF");
 	print CF <<__EOF__;
  # sbire.pl configuration file.
- \$OUTPUT_LIMIT = 1024;
+ OUTPUT_LIMIT = 1024
  
- \$SESSIONDIR = '/tmp/sbire';
- \$ARCHIVEDIR = '/usr/local/nagios/libexec/archive';
- \$PLUGINSDIR = '/usr/local/nagios/libexec';
+ SESSIONDIR = /tmp/sbire
+ ARCHIVEDIR = /var/nagios/archive
+ BASEDIR = /usr/local/nagios
  
 ####################################################
 #
@@ -75,7 +85,7 @@ my $Version= 'Version 0.9.8';
 # sent by 'send' command are signed with master's
 # private key. Direct commands are signed too.
 #
-# Sbires must then know the public key ($pubkey)
+# Sbires must then know the public key ($PUBLIC_KEY)
 #
 # if USE_RSA_DC_BASED_IMPLEMENTATION then the
 # dc command is used to implement the RSA
@@ -86,26 +96,25 @@ my $Version= 'Version 0.9.8';
 # Cygwin implementation (http://gnuwin32.sourceforge.net/packages/bc.htm)
 #
 ####################################################
-# \$USE_RSA = 1;
-# \$USE_RSA_DC_BASED_IMPLEMENTATION = 0;
+# USE_RSA = 1
+# USE_RSA_DC_BASED_IMPLEMENTATION = 0
 
-# \$pubkey = '/usr/local/nagios/bin/sbire_key.pub';
- 
- 1;
+# PUBLIC_KEY = /usr/local/nagios/bin/sbire_key.pub
+
 __EOF__
 	close CF;
 	&error("Cannot write $CONF") unless (-e $CONF);
 	}
 
- require $CONF;
+ &readConfig($CONF);
  mkdir($SESSIONDIR) unless (-d $SESSIONDIR);
  mkdir($ARCHIVEDIR) unless (-d $ARCHIVEDIR);
- mkdir($PLUGINSDIR) unless (-d $PLUGINSDIR);
+ mkdir($BASEDIR) unless (-d $BASEDIR);
 
 # Configuration check
-&error("Configuration error : PLUGINSDIR ($SESSIONDIR) does not exist or is not writable") unless (-w $SESSIONDIR);
+&error("Configuration error : SESSIONDIR ($SESSIONDIR) does not exist or is not writable") unless (-w $SESSIONDIR);
 &error("Configuration error : ARCHIVEDIR ($ARCHIVEDIR) does not exist or is not writable") unless (-w $ARCHIVEDIR);
-&error("Configuration error : PLUGINSDIR ($PLUGINSDIR) does not exist or is not writable") unless (-w $PLUGINSDIR);
+&error("Configuration error : BASEDIR ($BASEDIR) does not exist") unless (-d $BASEDIR);
 
  my $COMMAND = shift(@ARGV);
 
@@ -114,7 +123,7 @@ __EOF__
 	my $infos = "Sbire.pl $Version ";
 	my @more = ();
 	# TODO
-	push @more, $USE_RSA ? "RSA:pub=$pubkey" : "RSA:no";
+	push @more, $USE_RSA ? "RSA:pub=$PUBLIC_KEY" : "RSA:no";
 	print $infos." (" . join(", ",@more).")\n";
 	exit(0);
 	}
@@ -136,11 +145,14 @@ sub run_command {
 	{ &output(&info(@ARGS)) }
  elsif ($COMMAND eq 'run') 
 	{ &output(&run(@ARGS)) }
+ elsif ($COMMAND eq 'restart') 
+	{ &output(&restart(@ARGS)) }
  elsif ($COMMAND eq 'continue') 
 	{ &output(&contn(@ARGS)) }
+ elsif ($COMMAND eq 'config') 
+	{ &output(&write_config($CONF,@ARGS)) }
  else 
-	{ &error("Command '$COMMAND' unknown.") }
-
+	{ &error("Sbire: Command '$COMMAND' unknown.") }
 }
 
 sub send {
@@ -182,12 +194,19 @@ sub send {
 	
 	my $zlib = $ID=~s/\.z$//;
 	my $chunks = "$SESSIONDIR/$ID.chunks";
-	my $plugin = "$PLUGINSDIR/$name";
+	my $plugin = "$BASEDIR/$name";
+	
+	$plugin=$PUBLIC_KEY if ($name eq 'PUBLIC_KEY');
 	
 	# Verification : le fichier doit exister
 	&error("Session $ID does not exist.") unless (-f $chunks);
 	
+	&error("Unsecure upload forbidden.") unless ($ALLOW_UNSECURE_UPLOAD || $USE_RSA);
+	
+	
 	# Trouver un numero libre pour l'archive
+	my $archivedir=dirname("$ARCHIVEDIR/$name"); 
+	-d $archivedir || mkdir($archivedir) || &error("Cannot create $archivedir for archive.");
 	my $maxidx=1;
 	map {/\.(\d+)$/; $maxidx=$1+1 if $1>=$maxidx} <$ARCHIVEDIR/$name.*>;
 	my $archive="$ARCHIVEDIR/$name.$maxidx";
@@ -206,20 +225,24 @@ sub send {
 		}
 	
 	# Verification : la signature doit être correcte
-	
 	$signature=decode_base64($signature);
 
 	if ($USE_RSA) {
 	if ($USE_RSA_DC_BASED_IMPLEMENTATION) {
-		&checkRsaSignatureNoLib(md5_hex($content),$signature,$pubkey);
+		&checkRsaSignatureNoLib(md5_hex($content),$signature,$PUBLIC_KEY);
 		}
 	else {
-		&checkRsaSignature(md5_hex($content),$signature,$pubkey);
+		&checkRsaSignature(md5_hex($content),$signature,$PUBLIC_KEY);
 		}
 	}
 		
 	# Archiver l'ancien fichier (s'il existe)
-	-f $plugin && ( move($plugin,$archive) || &error("Cannot backup last revision. Is $archive writtable ?") );
+	if (-f $plugin) {
+		unless (move($plugin,$archive)) {
+			# Archive didn't work
+			&error("Could not archive last revision. $archive or $plugin must be write protected.");
+		}
+	}
 	
 	# Ecrire le nouveau fichier
 	open OUTPUT, ">$plugin" || &error ("Cannot write to $plugin")&&return;
@@ -233,12 +256,12 @@ sub send {
  }
  
  sub checkRsaSignature() {
-	my ($content,$signature,$pubkeyfile)=@_;
+	my ($content,$signature,$PUBLIC_KEYfile)=@_;
 	eval("use Crypt::RSA");
 	&error("Crypt::RSA not present") if ($@);
 	my $rsa = new Crypt::RSA; 
 	my $PublicKey = new Crypt::RSA::Key::Public (
-						Filename => $pubkeyfile
+						Filename => $PUBLIC_KEYfile
 					   ) || &error($rsa->errstr());
 	my $verifyOK = $rsa->verify (
 			Message    => $content, 
@@ -249,8 +272,8 @@ sub send {
  }
  
  sub checkRsaSignatureNoLib() {
-	my ($content,$signature,$pubkeyfile)=@_;
-	my ($k,$n)=&readKeyFile($pubkeyfile);
+	my ($content,$signature,$PUBLIC_KEYfile)=@_;
+	my ($k,$n)=&readKeyFile($PUBLIC_KEYfile);
 	$_=rsaCrypt($signature,$k,$n);
 	&error("Security check failed.")&&return unless ($content eq $_);
 } 
@@ -275,6 +298,7 @@ sub readKeyFile() {
 	local $/;
 	$_=<K>;
 	close K;
+	&error("Public key file $file is empty or missing.") unless /\w/;
 	s/\W//g;
 	my(undef,$k,$n)=split/0x/;
 	return ($k,$n);
@@ -298,6 +322,46 @@ sub readKeyFile() {
 	return $content;
  }
  
+ sub write_config {
+	my ($CONF,$VARIABLE,@VALUES) = @_;
+	
+	# Verification : le fichier doit exister
+	&error("Configuration is locked.") if ($CONFIG_LOCKED);
+	
+	# Replace value in config file
+	open CF, $CONF or &error("Cannot open $CONF : $!");
+	{
+		local $/;
+		$_=<CF>;
+	}
+	close CF;
+	if (s/^(\s*$VARIABLE\s*=).*/$1 @VALUES/m) {
+		open CF, ">$CONF" or &error("Cannot open $CONF : $!");
+		print CF;
+		close CF;
+		return "OK";
+	}
+
+	#Add the new variable value
+	open CF, ">>$CONF" or &error("Cannot open $CONF : $!");
+	print CF "$VARIABLE=@VALUES\n";
+	close CF;
+	return "OK";
+ }
+ 
+ sub readConfig {
+	my ($CONF) = @_;
+	
+	no strict "refs";
+	open CF, $CONF or &error("Cannot open $CONF : $!");
+	while (<CF>) {
+		s/#.*//;
+		next unless /\w/;
+		$$1=$2 if (/^\s*(\w+)\s*=\s*(.*)/);
+	}
+	close CF;
+ }
+ 
 sub run {
 	my ($name) = join " ",@_;
 	return "Security Error : cannot use this command without RSA security enabled" unless ($USE_RSA);
@@ -305,11 +369,18 @@ sub run {
 	return "> $name\n$result";
 }
  
+sub restart {
+	my $service=$NRPE_SERVICE_NAME;
+	system("sudo service $service restart > /dev/null &");
+	return "Reloading '$service' service.";;
+}
+ 
 sub info {
  	my ($name) = @_;
 	$name='*' unless defined $name;
-	my $PATH = $name=~/\d$/ ? $ARCHIVEDIR : $PLUGINSDIR;
+	my $PATH = $name=~/\d$/ ? $ARCHIVEDIR : $BASEDIR;
 	my $plugin = "$PATH/$name";
+	$plugin=$PUBLIC_KEY if ($name eq 'PUBLIC_KEY');
 	unless (-f $plugin || $plugin=~/\*/) {
 		&error ("$name does not exist in the plugin folder ($PATH)");
 		}
@@ -391,6 +462,7 @@ sub newChunkId() {
  
  sub error() {
 	my ($msg)=@_;
+	$\=$/;
 	print $msg;
 	exit(1) unless $SERVICE;
  }

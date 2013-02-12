@@ -91,7 +91,7 @@ sub process() {
 		
 		$name.=":$port" if ($port);
 		$cmd="./sbire_master.pl -H $name -P $protocol @args";
-		$cmd.=" -S" if (!$use_ssh);
+		$cmd.=" -S 1" if (!$use_ssh);
 	}
 		
 	#print $cmd;
