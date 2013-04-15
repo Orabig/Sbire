@@ -88,3 +88,4 @@ This will do the following :
 2. <local> is sent to the NRPE server in a temporary folder (SESSION_FOLDER)
 3. If a <remote> file already exist, then it's archived
 4. The new <remote> file is written/replaced.
+
