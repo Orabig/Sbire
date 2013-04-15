@@ -9,23 +9,17 @@ Sbire is a set of scripts whose aim is to help deploy, modify and maintain remot
 Presentation
 ------------
 
-Atm, there are 4 scripts :
+Atm, there are 3 scripts :
 
 * *sbire.pl*
 
-  It's the main script, which must be placed on remote NRPE or SSH servers (usually inside the folder
-  containing the plugins). It intended to be launched remotely via NRPE/SSH protocols by sbire_master.pl
+  It's the main script, which must be placed on remote NRPE servers (usually inside the folder
+  containing the plugins).
 
 * *sbire_master.pl*
 
-  It's the remote command script, which is NOT supposed to be run directly by the user. It controls `sbire.pl`
-  remotely, and manages the protocol used (SSH/NRPE with or without RSA authentification).
-
-* *sbire_sergeant.pl*
-
-  It's the command script, which is supposed to be run on a command line. It launches sbire_master with correct
-  arguments and protocols. Has also some user friendly usage and error messages. It also has the ability to launch
-  commands on several distant servers, using a "server_list" file.
+  It's the command script, which is supposed to be run on a command line. It's controls `sbire.pl`
+  remotely, whith the help of a standard `check_nrpe` call.
 
 * *sbire_rsa_keygen.pl*
 
