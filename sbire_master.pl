@@ -4,18 +4,26 @@
 #
 # sbire_master.pl
 #
-# Version 0.9.3
+# Version 0.9.5
 #
 # Historique : 0.9.1 :  First public revision
 #              0.9.2 :  Improved configuration file
 #						Changed 'update' command to 'upload'
 #              0.9.3 :  Different protocols may be used (LOCAL and NRPE so far)
+#              0.9.3 :  Added 'download' command
+#              0.9.4 :  Added illegal NRPE character conversion
+#						Added 'options' command
+#              0.9.5 :  Fixed problems by changing -e to -- argument
 # 
 # NRPE plugins update/manage master script
 #
-# Usage : sbire_master.pl -H <IP> -P NRPE|SSH -c upload -n <name> -f <file> [ -v 1 ]
-#         sbire_master.pl -H <IP> -P NRPE|SSH -c info -n <name>
-#         sbire_master.pl -H <IP> -P NRPE|SSH -c restart
+# Usage : sbire_master.pl -H <IP> -P LOCAL|NRPE|SSH -c upload -n <name> -f <file> [ -v 1 ]
+#         sbire_master.pl -H <IP> -P LOCAL|NRPE|SSH -c download -n <name> -f <file>
+#         sbire_master.pl -H <IP> -P LOCAL|NRPE|SSH -c run -- <cmdline>
+#         sbire_master.pl -H <IP> -P LOCAL|NRPE|SSH -c config -- <OPTION> <value>
+#         sbire_master.pl -H <IP> -P LOCAL|NRPE|SSH -c options
+#         sbire_master.pl -H <IP> -P LOCAL|NRPE|SSH -c info -n <name>
+#         sbire_master.pl -H <IP> -P LOCAL|NRPE|SSH -c restart
 # 
 ####################
 
@@ -26,7 +34,7 @@ my $CONFIGFILE;
 our ($CHUNK_SIZE, $privkey, $NRPE, $USE_ZLIB_COMPRESSION, $USE_RSA, $USE_SSH);
 {
 	# Default config file
-	$CONFIGFILE = $^O=~/Win/ ? './sbire_master.conf' : '/etc/sbire_master.conf';
+	$CONFIGFILE = $^O=~/Win/ ? './sbire_master.conf' : './etc/sbire_master.conf';
 	# Read config file as first argument
 	$_ = $ARGV[0];
 	if (defined $_ && !/^-/) {
@@ -52,7 +60,7 @@ _EOF_
 	require $CONFIGFILE;
 }
 
-die ("NRPE could not be found at $NRPE") unless (-x $NRPE);
+# die ("NRPE could not be found at $NRPE") unless (-x $NRPE);
 	
 use MIME::Base64; 
 use Digest::MD5 qw(md5_hex);
@@ -67,12 +75,16 @@ my ($help,$verbose);
 	"n" => \$name,
 	"S" => \$NRPEnossh,
 	"f" => \$file,
-	"e" => \$cmdline,
+	"-" => \$cmdline,
 	"h" => \$help
 );
 	
 &error("Destination (-H) is mandatory") unless defined $dest;
 &usage() if defined $help;
+
+# transforme les caracteres interdits pour NRPE en meta-caractere
+$name   =~s/[\%\\\&\|\'\"\{\}\;]/'%'.sprintf("%x",ord $&)/ge;
+$cmdline=~s/[\%\\\&\|\'\"\{\}\;]/'%'.sprintf("%x",ord $&)/ge;
 
 unless (defined $command) {
 	print &call_sbire(' ');
@@ -80,13 +92,17 @@ unless (defined $command) {
 }
 
 if ($command eq 'upload') {
-	&update($file,$name,$verbose);
+	&upload($file,$name,$verbose);
 } elsif ($command eq 'restart') {
 	&restart();
 } elsif ($command eq 'info') {
 	&info($name);
+} elsif ($command eq 'download') {
+	&download($file,$name,$verbose);
 } elsif ($command eq 'config') {
 	&config($cmdline);
+} elsif ($command eq 'options') {
+	&options();
 } elsif ($command eq 'run') {
 	&run($name,$cmdline);
 } else {
@@ -94,10 +110,13 @@ if ($command eq 'upload') {
 }
 
 sub usage {
-	print "Usage : sbire_master.pl -H <IP> -c upload -n <name> -f <file> [ -v 1 ]";
-	print "        sbire_master.pl -H <IP> -c run -e \"<cmdline>\"";
-	print "        sbire_master.pl -H <IP> -c info -n <name>";
-	print "        sbire_master.pl -H <IP> -c restart";
+	print "Usage : sbire_master.pl -H <IP> -P LOCAL|NRPE|SSH -c upload -n <name> -f <file>";
+	print "        sbire_master.pl -H <IP> -P LOCAL|NRPE|SSH -c download -n <name> [-f <file>]";
+	print "        sbire_master.pl -H <IP> -P LOCAL|NRPE|SSH -c run -e \"<cmdline>\"";
+	print "        sbire_master.pl -H <IP> -P LOCAL|NRPE|SSH -c config -e \"<OPTION> <value>\"";
+	print "        sbire_master.pl -H <IP> -P LOCAL|NRPE|SSH -c options";
+	print "        sbire_master.pl -H <IP> -P LOCAL|NRPE|SSH -c info -n <name>";
+	print "        sbire_master.pl -H <IP> -P LOCAL|NRPE|SSH -c restart";
 }
 sub error {
 	my ($msg)=@_;
@@ -109,7 +128,7 @@ sub error {
 
 sub run {
 	my ($name,$cmdline)=@_;
-	print &call_sbire("run $name \"$cmdline\"");
+	print &call_sbire("run $name $cmdline");
 }
 
 sub info {
@@ -120,6 +139,10 @@ sub info {
 sub config {
 	my ($name)=@_;
 	print &call_sbire("config $name");
+}
+
+sub options {
+	print &call_sbire("options");
 }
 
 sub restart {	
@@ -139,7 +162,25 @@ sub restart {
 }
 
 
-sub update {
+sub download {
+	my ($file,$name,$verbose)=@_;
+	my $content=&call_sbire("download $name");
+	print "Writing file" if ($verbose);
+	unless ($file) {
+		undef $\;
+		print $content;
+	} else {
+		open INF, ">$file" or die "\nCan't open $file for writing: $!\n";
+		binmode INF;
+		print INF $content;
+		close INF;
+		my $len=length($content);
+		print "Downloaded $len bytes to $file.";
+	}
+	exit(0);
+	}
+
+sub upload {
 	my ($file,$name,$verbose)=@_;
 	
 	# Lecture du fichier
@@ -172,7 +213,7 @@ sub update {
 			local $\;
 			print "Compressing..." if ($verbose);
 		}
-		my $zcontent=compress($content);
+		$zcontent=compress($content);
 		print " Ratio : ".int(100-100*length($zcontent)/length($content))."%" if ($verbose);
 	} else { $zcontent=$content; }
 
@@ -214,7 +255,7 @@ sub update {
 
 sub readKeyFile() {
    my($file)=@_;
-   open K,$file;
+   open K,$file or die "\nCan't open private key file $file: $!\n";
    local $/;
    $_=<K>;
    close K;
@@ -225,6 +266,7 @@ sub readKeyFile() {
 
 sub rsaCrypt() {
 	my ($content,$k,$n)=@_;
+	return "-" unless defined $n;
 	$\=$/;
 	local $/;
 	$/=unpack('H*',$content);
@@ -250,7 +292,7 @@ sub call_sbire {
 	my $cmd=&buildCmd($args); 
 	
 	print "sbire > $cmd" if ($verbose>1);
-	my $result = qx!$cmd!;
+	my $result = get_output($cmd);
 	
 	# Loop : while the result ends with ___Cont:xxx___, then another request must be done
 	while ($result=~/___Cont:(\d+)___$/) {
@@ -258,7 +300,7 @@ sub call_sbire {
 		$cmd=&buildCmd("continue $1");
 		print "sbire > $cmd" if ($verbose>1);
 		$result=substr($result,0,length($result)-length($remove)-1);
-		$result .= qx!$cmd!;
+		$result .= get_output($cmd);
 	}
 	
 	if ($? && !$ignore_err) {
@@ -276,6 +318,12 @@ sub call_sbire {
 	chomp $result;
 	print $result if ($verbose>2);
 	return $result;
+}
+
+sub get_output {
+	my ($cmd) = @_;
+	my $output=qx!$cmd!;
+	return $output=~/^b\*64_(.*)_b64$/sm ? decode_base64($1) : $output;
 }
 
 sub buildCmd() {
@@ -330,5 +378,6 @@ sub getOptions() {
                         }
                 }
         }
+
 
 

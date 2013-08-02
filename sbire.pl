@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-my $Version= 'Version 0.9.10';
+my $Version= 'Version 0.9.15';
 
 ####################
 #
@@ -22,7 +22,7 @@ my $Version= 'Version 0.9.10';
 #		Send a new chunk (part of a new file) into the quarantine directory
 #
 #    sbire.pl <CFG> update <name> <sessionID> <signature>
-#		Creates or updates a plugin/file with the previously sent file. If sessionID has ".z" suffix, then the file is zipped and must be unpacked.
+#		Creates or updaes a plugin/file with the previously sent file. If sessionID has ".z" suffix, then the file is zipped and must be unpacked.
 #       If <name>=PUBLIC_KEY then the public key file is written
 #
 #    sbire.pl <CFG> chmod <name> <chmod> 
@@ -32,7 +32,7 @@ my $Version= 'Version 0.9.10';
 #		Gets informations about a plugin.file (size, checksum and version if any). If name is omitted, then '*' is assumed.
 #
 #    Note : When the output of a command is longer than $OUTPUT_LIMIT (def. 1024), then it's truncated and ends with ___Cont:<id>___. The following
-#           of the output may then be retreived with the following command.
+#          of the output may then be retreived with the following command.
 #
 #    sbire.pl <CFG> continue <sessionID>
 #		Gets the output store in the given sessionID. (see above note)
@@ -43,7 +43,7 @@ my $Version= 'Version 0.9.10';
 #    sbire.pl <CFG> service
 #       Loops and waits for "orders" to execute. The process thus runs indefinitely. It looks for data sources
 #       defined in a "channel" list for orders documents, that have the following structure : {"ID":"<int>", 
-#       "type":"<transfert|exec|info>", "file":"<base64_encrypted_content>", "name":"<filename>"}
+#       "type":"<transfert|exec|info>", "fle":"<base64_encrypted_content>", "name":"<filename>"}
 #
 ####################
 
@@ -53,19 +53,28 @@ my $Version= 'Version 0.9.10';
  use File::Basename;
  
  use strict;
+ no strict 'refs';
+ 
+ my @options=qw!PUBLIC_KEY SESSIONDIR ARCHIVEDIR BASEDIR USE_RSA USE_RSA_DC_BASED_IMPLEMENTATION DC_PATH OUTPUT_LIMIT ALLOW_UNSECURE_UPLOAD ALLOW_UNSECURE_COMMAND CONFIG_LOCKED NRPE_SERVICE_NAME BASE64_TRANSFERT!;
  
  # Definition du fichier de configuration
- our ($PUBLIC_KEY,$SESSIONDIR,$ARCHIVEDIR,$BASEDIR,$USE_RSA,$USE_RSA_DC_BASED_IMPLEMENTATION,$OUTPUT_LIMIT,$ALLOW_UNSECURE_UPLOAD,$CONFIG_LOCKED,$NRPE_SERVICE_NAME);
+ our ($PUBLIC_KEY,$SESSIONDIR,$ARCHIVEDIR,$BASEDIR,$USE_RSA,$USE_RSA_DC_BASED_IMPLEMENTATION,$DC_PATH,$OUTPUT_LIMIT,$ALLOW_UNSECURE_UPLOAD,$ALLOW_UNSECURE_COMMAND,$CONFIG_LOCKED,$NRPE_SERVICE_NAME,$BASE64_TRANSFERT);
  # Default values (security)
- $CONFIG_LOCKED = 1;
- $OUTPUT_LIMIT = 1024;
+ $CONFIG_LOCKED = 0;
+ $BASE64_TRANSFERT = 1;
+ $OUTPUT_LIMIT = 640;
  $ALLOW_UNSECURE_UPLOAD = 0;
  $NRPE_SERVICE_NAME = 'nrpe';
+ $DC_PATH = 'dc';
  
  our ($SERVICE);
  my $CONF = shift(@ARGV);
  
- exit(1) unless defined $CONF; # TODO : Usage
+ unless (defined $CONF) {
+	print "sbire.pl $Version\n";
+	print "Usage : sbire.pl <config_file> [commands...]\n";
+	exit(1);
+	}
  
  unless (-e $CONF) {
 	print "Configuration file missing. Init with default values";
@@ -83,7 +92,7 @@ my $Version= 'Version 0.9.10';
 # if USE_RSA is set to 1, then RSA protocol is used
 # between master and sbires. This means that files
 # sent by 'send' command are signed with master's
-# private key. Direct commands are signed too.
+# private key. Drect commands are signed too.
 #
 # Sbires must then know the public key ($PUBLIC_KEY)
 #
@@ -103,7 +112,7 @@ my $Version= 'Version 0.9.10';
 
 __EOF__
 	close CF;
-	&error("Cannot write $CONF") unless (-e $CONF);
+	&error("Canot write $CONF") unless (-e $CONF);
 	}
 
  &readConfig($CONF);
@@ -114,13 +123,14 @@ __EOF__
 # Configuration check
 &error("Configuration error : SESSIONDIR ($SESSIONDIR) does not exist or is not writable") unless (-w $SESSIONDIR);
 &error("Configuration error : ARCHIVEDIR ($ARCHIVEDIR) does not exist or is not writable") unless (-w $ARCHIVEDIR);
-&error("Configuration error : BASEDIR ($BASEDIR) does not exist") unless (-d $BASEDIR);
+#&error("Configuration error : BASEDIR ($BASEDIR) does not exist") unless (-d $BASEDIR);
+$BASEDIR="." unless (-d $BASEDIR);
 
  my $COMMAND = shift(@ARGV);
 
 
  unless (defined $COMMAND) {
-	my $infos = "Sbire.pl $Version ";
+	my $infos = "sbire.pl $Version ";
 	my @more = ();
 	# TODO
 	push @more, $USE_RSA ? "RSA:pub=$PUBLIC_KEY" : "RSA:no";
@@ -137,14 +147,22 @@ else
 
 sub run_command {
 	my ($COMMAND,@ARGS)=@_;
+
+	# transforme les meta-caracteres interdits pour nrpe
+	@ARGS = map {s/\%([a-f\d]{2})/chr(hex($1))/gei;$_} @ARGS;
+
 	if ($COMMAND eq 'send') 
 	{ &output(&send(@ARGS)) }
  elsif ($COMMAND eq 'update') 
 	{ &output(&update(@ARGS)) }
  elsif ($COMMAND eq 'info') 
 	{ &output(&info(@ARGS)) }
+ elsif ($COMMAND eq 'download') 
+	{ &output(&download(@ARGS)) }
  elsif ($COMMAND eq 'run') 
 	{ &output(&run(@ARGS)) }
+ elsif ($COMMAND eq 'options') 
+	{ &output(&read_config()) }
  elsif ($COMMAND eq 'restart') 
 	{ &output(&restart(@ARGS)) }
  elsif ($COMMAND eq 'continue') 
@@ -224,7 +242,7 @@ sub send {
 		$content = uncompress($content);
 		}
 	
-	# Verification : la signature doit être correcte
+	# Verification : la signature doit êcorrecte
 	$signature=decode_base64($signature);
 
 	if ($USE_RSA) {
@@ -232,7 +250,7 @@ sub send {
 		&checkRsaSignatureNoLib(md5_hex($content),$signature,$PUBLIC_KEY);
 		}
 	else {
-		&checkRsaSignature(md5_hex($content),$signature,$PUBLIC_KEY);
+	&checkRsaSignature(md5_hex($content),$signature,$PUBLIC_KEY);
 		}
 	}
 		
@@ -275,7 +293,7 @@ sub send {
 	my ($content,$signature,$PUBLIC_KEYfile)=@_;
 	my ($k,$n)=&readKeyFile($PUBLIC_KEYfile);
 	$_=rsaCrypt($signature,$k,$n);
-	&error("Security check failed.")&&return unless ($content eq $_);
+	&error("Securiy check failed.")&&return unless ($content eq $_);
 } 
 
 sub rsaCrypt() {
@@ -286,7 +304,7 @@ sub rsaCrypt() {
 	open DC,">$temp";
 	print DC "16dio\U${k}SK$/SM$n\EsN0p[lN*1lK[d2%Sa2/d0<X+d*lMLa^*lN%0]dsXx++lMlN/dsM0<j]dsjxp";
 	close DC;
-	$_=`dc $temp`;
+	$_=`$DC_PATH $temp`;
 	unlink($temp);
 	s/\W//g;
 	$_=pack('H*',/((..)*)$/);
@@ -322,14 +340,27 @@ sub readKeyFile() {
 	return $content;
  }
  
- sub write_config {
+ sub read_config {
+	my $list='';
+	foreach (@options) {
+		if (defined $$_) {
+		$list.="\n" unless $list eq '';
+		$list .= "$_=";
+		$_=$$_;
+		$list.= /\D/?"'$_'":$_;
+		}
+	}
+	return $list;
+ }
+ 
+sub write_config {
 	my ($CONF,$VARIABLE,@VALUES) = @_;
 	
 	# Verification : le fichier doit exister
 	&error("Configuration is locked.") if ($CONFIG_LOCKED);
 	
 	# Replace value in config file
-	open CF, $CONF or &error("Cannot open $CONF : $!");
+	open CF,$CONF or &error("Cannot open $CONF : $!");
 	{
 		local $/;
 		$_=<CF>;
@@ -357,22 +388,31 @@ sub readKeyFile() {
 	while (<CF>) {
 		s/#.*//;
 		next unless /\w/;
-		$$1=$2 if (/^\s*(\w+)\s*=\s*(.*)/);
+		$$1=$3 if (/^\s*\$?(\w+)\s*=\s*(['"]?)(.*?)\2;?\s*$/);
 	}
-	close CF;
+	close C;
  }
  
 sub run {
-	my ($name) = join " ",@_;
-	return "Security Error : cannot use this command without RSA security enabled" unless ($USE_RSA);
-	my $result = `$name 2>&1`;
-	return "> $name\n$result";
+	return "Security Error : cannot use this command without RSA security enabled" unless ($USE_RSA || $ALLOW_UNSECURE_COMMAND);
+	chdir($BASEDIR);
+	return join'',qx!@_!;
+}
+ 
+sub download {
+	my ($name) = @_;
+	$name="$BASEDIR/$name" unless $name=~/^\//;
+	open(INF,$name) || &error("Cannot open $name");
+	binmode INF;
+	$_ = do { local $/; <INF> };
+	close INF;
+	return $_;
 }
  
 sub restart {
 	my $service=$NRPE_SERVICE_NAME;
 	system("sudo service $service restart > /dev/null &");
-	return "Reloading '$service' service.";;
+	return "Reloading '$service' service.";
 }
  
 sub info {
@@ -395,8 +435,8 @@ sub info {
 		# Lecture du numero de version
 		open INF,$file || &error("Cannot open $name");
 		binmode INF;
-			$_ = do { local $/; <INF> };
-			close INF;
+		$_ = do { local $/; <INF> };
+		close NF;
 		my $Version="";
 		$Version=$1 if /(?:Version|Revision)\W*(\d[\d\.]*[a-z]?\b)/i;
 		my $MD5=md5_hex($_);
@@ -424,7 +464,7 @@ sub service {
 	}
 }
 
-# Reads the "order list" file, which maintains the last known states of the orders (running/done/pending/sent)
+# Reads the "order list" file, which maintains the last nown states of the orders (running/done/pending/sent)
 sub read_order_list {
 	
 }
@@ -457,7 +497,7 @@ sub newChunkId() {
 	my $ID;
 	do {
 		$ID = int(rand(100000));
-	} until (! -f "$SESSIONDIR/$ID.chunks");
+	} until(! -f "$SESSIONDIR/$ID.chunks");
 	return $ID;
 }
  
@@ -474,10 +514,10 @@ sub newChunkId() {
 	if (length($msg) >= $OUTPUT_LIMIT) {
 		my $ID = &newChunkId();
 		$POSTFIX =~ s/0+/$ID/;
-		my $cutAt = $OUTPUT_LIMIT - (1+length $POSTFIX);
+		my $cutAt = $OUTPUT_LIMIT - (10+length $POSTFIX);
 		
 		my $pre_msg = substr($msg,0,$cutAt);
-		my $post_msg = substr($msg,$cutAt);
+		my $post_msg = substr($msg,$cutAt-1);
 
 		my $file = "$SESSIONDIR/$ID.chunks";
 		&write_to_file($file ,$post_msg);
@@ -485,8 +525,9 @@ sub newChunkId() {
 		$msg = $pre_msg . $POSTFIX;
 	}
 	local $\;
-	print $msg;
+	print $BASE64_TRANSFERT ? "b*64_".encode_base64($msg)."_b64" : $msg;
 	exit(0);
  }
  
- 
+
+

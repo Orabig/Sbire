@@ -4,15 +4,17 @@
 #
 # sb_sergeant.pl
 #
-# Version 0.9.0
+# Version 0.9.7
 #
 # Historique : 0.9.0 :  First revision
+#              0.9.6 :  Config::Simple package is not required anymore
+#              0.9.7 :  Fixed @server_list_file selection mode
 # 
 # Knows about a list of servers, and delegates to sb_master.pl to send them commands in group
 #
-# Usage : sb_sergeant.pl @server_list_file [ -c <COMMAND> args... ]
-#      or sb_sergeant.pl alias*            [ -c <COMMAND> args... ]
-#      or sb_sergeant.pl all               [ -c <COMMAND> args... ]
+# Usage : sb_sergeant.pl @server_list_file [--csv] [ -c <COMMAND> args... ]
+#      or sb_sergeant.pl alias*            [--csv] [ -c <COMMAND> args... ]
+#      or sb_sergeant.pl all               [--csv] [ -c <COMMAND> args... ]
 #      or sb_sergeant.pl list
 #
 # /etc/sb_sergeant.cfg must exist and define SBIRE_LIST path
@@ -20,16 +22,24 @@
 ####################
 
 use strict;
-use Config::Simple;
+
+my $CONFIG_FILE = '/opt/adm/sbire-master/etc/sb_sergeant.cfg';
 
 $\=$/;
 
 my $files = shift @ARGV;
 
+# On recherche la presence d'une option --csv dans les arguments
+our $CSV = grep /^--csv$/, @ARGV;
+@ARGV = grep !/^--csv$/, @ARGV;
+undef $\ if $CSV;
+
 defined $files || die ('Usage : sb_sergeant.pl (list | all | alias | @server_list_file) [ -c <COMMAND> args... ]');
 
-my $CONFIG_FILE = '/etc/sb_sergeant.cfg';
-tie my %Config, "Config::Simple", $CONFIG_FILE or die Config::Simple->error();
+my %Config;
+open CFG, $CONFIG_FILE || die "Cannot find config file $CONFIG_FILE";
+while (<CFG>){chomp;$Config{$1}=$2 if (/\s*(\w+)\s+(.*)/)}
+close CFG;
 
 # Loads the configuration
 our @SBIRES;
@@ -41,10 +51,13 @@ if (lc $files eq 'list') {
 	exit(0);
 }
 
+my $MULTIPLE = ($files=~/^\@/) || ($files=~/^all$/i);
+
 if ($files=~s/^\@//) {
 	# open file list
 	open LST, "<$files" || die ("Cannot open $files");	
 	map { 
+		chomp;
 		if (defined $SBIRES{$_}) {
 			&process($_);
 		} else {
@@ -76,9 +89,17 @@ sub process() {
 	my $name=$sbire{'NAME'};
 	my $protocol=$sbire{'PROTOCOL'};
 	my @args = @ARGV;
-	print "$protocol:$alias ($name)";
 
 	my $cmd;
+	my $download = grep /^download$/, @args;
+
+	my $header=""; 
+	unless ($CSV) {
+		$header="| $alias ($name) |"; 
+		my $line="-" x length $header; 
+		$header="$line\n$header\n$line";
+	} 
+	print $header unless ($CSV || $download) && !$MULTIPLE;
 	
 	# Local (mainly for testing)
 	if (uc $protocol eq 'LOCAL') {
@@ -90,12 +111,17 @@ sub process() {
 		my $port = &getConf($alias,'NRPE-PORT');
 		
 		$name.=":$port" if ($port);
-		$cmd="./sbire_master.pl -H $name -P $protocol @args";
-		$cmd.=" -S 1" if (!$use_ssh);
+		my $sshcmd = $use_ssh ? '' : '-S 1';
+		$cmd="./sbire_master.pl -H $name -P $protocol $sshcmd @args";
 	}
-		
+	
 	#print $cmd;
-	print `$cmd`;
+	my $output = `$cmd`;
+	if ($CSV) {
+		# En sortie CSV, on prefixe toutes les lignes par le nom du serveur son adresse IP et le protocole
+		$output=~s/^/$alias\t/gm;
+	}
+	print $output;
 }
 
 sub getConf() {
@@ -138,3 +164,4 @@ sub readSbireFile() {
 	}
 	%CONF;
 }
+
