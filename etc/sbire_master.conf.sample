@@ -1,0 +1,8 @@
+# Sample configuration file
+$CHUNK_SIZE = 832;
+$privkey = '/opt/adm/sbire-master/.sb_key/sbire_key.private';
+$NRPE = '/opt/nagios/bin/check_nrpe -t 9';
+$USE_SSH = 0;
+$USE_RSA = 1;
+$USE_ZLIB_COMPRESSION = 0;
+1;

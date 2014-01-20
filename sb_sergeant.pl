@@ -4,11 +4,12 @@
 #
 # sb_sergeant.pl
 #
-# Version 0.9.7
+# Version 0.9.8
 #
 # Historique : 0.9.0 :  First revision
 #              0.9.6 :  Config::Simple package is not required anymore
 #              0.9.7 :  Fixed @server_list_file selection mode
+#              0.9.8 :  Some fix
 # 
 # Knows about a list of servers, and delegates to sb_master.pl to send them commands in group
 #
@@ -61,7 +62,7 @@ if ($files=~s/^\@//) {
 		if (defined $SBIRES{$_}) {
 			&process($_);
 		} else {
-			print "Warning : Sbire unknown : $_";
+			print "$_\tServer not found in server list\n";
 		}
 	} grep /\w/, map {s/(#|;).*//;$_} <LST>;
 	close LST;
@@ -71,9 +72,12 @@ if ($files=~s/^\@//) {
 # Else
 	{
 	# filter servers
+	my $ifiles = $files;
 	$files=~s/\*/.*/g;
 	$files=".*" if (lc $files eq 'all');
-	map { &process($_) } grep /$files/i, grep /\w/, @SBIRES;
+	my @slist = grep /$files/i, grep /\w/, @SBIRES;
+	print "$ifiles\tServer not found in server list" unless @slist;
+	map { &process($_) } @slist;
 	exit(0);
 	}
 

@@ -1,0 +1,12 @@
+# Server list
+# Alias IP/Name		Protocol
+
+# Default attributes :
+ USE-RSA		1
+ COMPRESSION	0
+ NRPE-USE-SSH	0
+ NRPE-PORT	123
+
+SERVER-01 1.2.3.4	NRPE
+SERVER-02 2.3.4.5	SSH
+	USE-RSA	0
