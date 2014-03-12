@@ -4,7 +4,7 @@
 #
 # sbire_master.pl
 #
-# Version 0.9.5
+# Version 0.9.6
 #
 # Historique : 0.9.1 :  First public revision
 #              0.9.2 :  Improved configuration file
@@ -14,6 +14,7 @@
 #              0.9.4 :  Added illegal NRPE character conversion
 #						Added 'options' command
 #              0.9.5 :  Fixed problems by changing -e to -- argument
+#              0.9.6 :  The script can now be invoked from another directory
 # 
 # NRPE plugins update/manage master script
 #
@@ -34,7 +35,9 @@ my $CONFIGFILE;
 our ($CHUNK_SIZE, $privkey, $NRPE, $USE_ZLIB_COMPRESSION, $USE_RSA, $USE_SSH);
 {
 	# Default config file
-	$CONFIGFILE = $^O=~/Win/ ? './sbire_master.conf' : './etc/sbire_master.conf';
+	my $ROOT_DIR = $0;$ROOT_DIR=~s!/[^/]*$!!;
+	$CONFIGFILE = $^O=~/Win/ ? './sbire_master.conf' : "$ROOT_DIR/etc/sbire_master.conf";
+	$CONFIGFILE = '/etc/sbire_master.conf' unless -f $CONFIGFILE;
 	# Read config file as first argument
 	$_ = $ARGV[0];
 	if (defined $_ && !/^-/) {
@@ -112,8 +115,8 @@ if ($command eq 'upload') {
 sub usage {
 	print "Usage : sbire_master.pl -H <IP> -P LOCAL|NRPE|SSH -c upload -n <name> -f <file>";
 	print "        sbire_master.pl -H <IP> -P LOCAL|NRPE|SSH -c download -n <name> [-f <file>]";
-	print "        sbire_master.pl -H <IP> -P LOCAL|NRPE|SSH -c run -e \"<cmdline>\"";
-	print "        sbire_master.pl -H <IP> -P LOCAL|NRPE|SSH -c config -e \"<OPTION> <value>\"";
+	print "        sbire_master.pl -H <IP> -P LOCAL|NRPE|SSH -c run -- <cmdline>";
+	print "        sbire_master.pl -H <IP> -P LOCAL|NRPE|SSH -c config -- <OPTION> <value>";
 	print "        sbire_master.pl -H <IP> -P LOCAL|NRPE|SSH -c options";
 	print "        sbire_master.pl -H <IP> -P LOCAL|NRPE|SSH -c info -n <name>";
 	print "        sbire_master.pl -H <IP> -P LOCAL|NRPE|SSH -c restart";

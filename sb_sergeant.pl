@@ -4,12 +4,14 @@
 #
 # sb_sergeant.pl
 #
-# Version 0.9.8
+# Version 0.9.10
 #
 # Historique : 0.9.0 :  First revision
 #              0.9.6 :  Config::Simple package is not required anymore
 #              0.9.7 :  Fixed @server_list_file selection mode
 #              0.9.8 :  Some fix
+#              0.9.9 :  The script can now invoke sbire_master from another directory
+#              0.9.10:  Changed the @server_list_file behaviour
 # 
 # Knows about a list of servers, and delegates to sb_master.pl to send them commands in group
 #
@@ -24,7 +26,12 @@
 
 use strict;
 
-my $CONFIG_FILE = '/opt/adm/sbire-master/etc/sb_sergeant.cfg';
+my $ROOT_DIR = $0;$ROOT_DIR=~s!/[^/]*$!!;
+my $CONFIG_DIR = "$ROOT_DIR/etc";
+$CONFIG_DIR = "/etc" unless -f "$CONFIG_DIR/sb_sergeant.cfg";
+my $CONFIG_FILE = "$CONFIG_DIR/sb_sergeant.cfg";
+
+my $MASTER = "$ROOT_DIR/sbire_master.pl";
 
 $\=$/;
 
@@ -56,7 +63,8 @@ my $MULTIPLE = ($files=~/^\@/) || ($files=~/^all$/i);
 
 if ($files=~s/^\@//) {
 	# open file list
-	open LST, "<$files" || die ("Cannot open $files");	
+	-f "$CONFIG_DIR/$files.lst" || die ("$CONFIG_DIR/$files.lst not found");	
+	open LST, "$CONFIG_DIR/$files.lst";
 	map { 
 		chomp;
 		if (defined $SBIRES{$_}) {
@@ -107,7 +115,7 @@ sub process() {
 	
 	# Local (mainly for testing)
 	if (uc $protocol eq 'LOCAL') {
-		$cmd="./sbire_master.pl -H $name -P $protocol @args";
+		$cmd="$MASTER -H $name -P $protocol @args";
 	}
 	
 	if (uc $protocol eq 'NRPE') {
@@ -116,7 +124,7 @@ sub process() {
 		
 		$name.=":$port" if ($port);
 		my $sshcmd = $use_ssh ? '' : '-S 1';
-		$cmd="./sbire_master.pl -H $name -P $protocol $sshcmd @args";
+		$cmd="$MASTER -H $name -P $protocol $sshcmd @args";
 	}
 	
 	#print $cmd;
