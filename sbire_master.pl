@@ -4,7 +4,7 @@
 #
 # sbire_master.pl
 #
-# Version 0.9.6
+# Version 0.9.8
 #
 # Historique : 0.9.1 :  First public revision
 #              0.9.2 :  Improved configuration file
@@ -15,6 +15,8 @@
 #						Added 'options' command
 #              0.9.5 :  Fixed problems by changing -e to -- argument
 #              0.9.6 :  The script can now be invoked from another directory
+#              0.9.7 :  Added SSH support
+#              0.9.8 :  Added NRPE command
 # 
 # NRPE plugins update/manage master script
 #
@@ -25,6 +27,7 @@
 #         sbire_master.pl -H <IP> -P LOCAL|NRPE|SSH -c options
 #         sbire_master.pl -H <IP> -P LOCAL|NRPE|SSH -c info -n <name>
 #         sbire_master.pl -H <IP> -P LOCAL|NRPE|SSH -c restart
+#         sbire_master.pl -H <IP> -P NRPE           -c nrpe [ -n <name> ]
 # 
 ####################
 
@@ -68,10 +71,11 @@ _EOF_
 use MIME::Base64; 
 use Digest::MD5 qw(md5_hex);
  
-my ($protocol,$command,$dest,$file,$name,$cmdline,$NRPEnossh);
+my ($protocol,$command,$dest,$file,$name,$cmdline,$NRPEnossh,$ssh_path);
 my ($help,$verbose);
 &getOptions(
 	"P" => \$protocol,
+	"p" => \$ssh_path,
 	"c" => \$command,
 	"H" => \$dest,
 	"v" => \$verbose,
@@ -100,6 +104,8 @@ if ($command eq 'upload') {
 	&restart();
 } elsif ($command eq 'info') {
 	&info($name);
+} elsif ($command eq 'nrpe') {
+	&nrpe($name);
 } elsif ($command eq 'download') {
 	&download($file,$name,$verbose);
 } elsif ($command eq 'config') {
@@ -120,6 +126,7 @@ sub usage {
 	print "        sbire_master.pl -H <IP> -P LOCAL|NRPE|SSH -c options";
 	print "        sbire_master.pl -H <IP> -P LOCAL|NRPE|SSH -c info -n <name>";
 	print "        sbire_master.pl -H <IP> -P LOCAL|NRPE|SSH -c restart";
+	print "        sbire_master.pl -H <IP> -P NRPE           -c nrpe [ -n <name> ]";
 }
 sub error {
 	my ($msg)=@_;
@@ -137,6 +144,11 @@ sub run {
 sub info {
 	my ($name)=@_;
 	print &call_sbire("info $name");
+}
+
+sub nrpe {
+    my ($name)=@_;
+	print get_output(&buildNrpeCmd($name));
 }
 
 sub config {
@@ -329,6 +341,25 @@ sub get_output {
 	return $output=~/^b\*64_(.*)_b64$/sm ? decode_base64($1) : $output;
 }
 
+sub buildNrpeCmd() {
+	my ($name)=@_;
+	my $cmd;
+	if (uc $protocol eq 'NRPE') {
+		my $nrpe_arg = $NRPEnossh ? "" : "-n";
+		my $nrpe_cmd;
+		if ($dest=~/^(.*):(\d+)$/) {
+			$nrpe_cmd="$NRPE -H $1 -p $2 $nrpe_arg";
+		} else {
+			$nrpe_cmd="$NRPE -H $dest $nrpe_arg";
+		}
+		$cmd=$nrpe_cmd;
+		$cmd .= " -c $name" if $name=~/\w/;
+	} else {
+		&error("NRPE command incompatible with protocol '$protocol'.");
+	}
+	return $cmd;
+}
+
 sub buildCmd() {
 	my ($args)=@_;
 	my $cmd;
@@ -340,7 +371,9 @@ sub buildCmd() {
 		} else {
 			$nrpe_cmd="$NRPE -H $dest $nrpe_arg";
 		}
-		$cmd = $cmd="$nrpe_cmd -c sbire -a \" $args\"";
+		$cmd="$nrpe_cmd -c sbire -a \" $args\"";
+	} elsif (uc $protocol eq 'SSH') {
+		$cmd=qq!ssh $dest  "$ssh_path $args"!;
 	} elsif (uc $protocol eq 'LOCAL') {
 		$cmd="./sbire.pl /etc/sbire.cfg $args";
 	} else {

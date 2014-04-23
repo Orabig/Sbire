@@ -1,10 +1,10 @@
 #!/usr/bin/perl
 
+my $Version= 'Version 0.9.14';
+
 ####################
 #
 # sb_sergeant.pl
-#
-# Version 0.9.10
 #
 # Historique : 0.9.0 :  First revision
 #              0.9.6 :  Config::Simple package is not required anymore
@@ -12,6 +12,10 @@
 #              0.9.8 :  Some fix
 #              0.9.9 :  The script can now invoke sbire_master from another directory
 #              0.9.10:  Changed the @server_list_file behaviour
+#              0.9.11:  The server must now be fully named by the user (autocompletion was a bad idea)
+#              0.9.12:  Added SSH support
+#              0.9.13:  Fixed output on empty result with CSV option
+#              0.9.14:  Default configuration when sb_sergeant.cfg does not exist
 # 
 # Knows about a list of servers, and delegates to sb_master.pl to send them commands in group
 #
@@ -28,7 +32,7 @@ use strict;
 
 my $ROOT_DIR = $0;$ROOT_DIR=~s!/[^/]*$!!;
 my $CONFIG_DIR = "$ROOT_DIR/etc";
-$CONFIG_DIR = "/etc" unless -f "$CONFIG_DIR/sb_sergeant.cfg";
+$CONFIG_DIR = "/etc" if (-f "/etc/sb_sergeant.cfg" && ! -f "$CONFIG_DIR/sb_sergeant.cfg");
 my $CONFIG_FILE = "$CONFIG_DIR/sb_sergeant.cfg";
 
 my $MASTER = "$ROOT_DIR/sbire_master.pl";
@@ -42,12 +46,19 @@ our $CSV = grep /^--csv$/, @ARGV;
 @ARGV = grep !/^--csv$/, @ARGV;
 undef $\ if $CSV;
 
-defined $files || die ('Usage : sb_sergeant.pl (list | all | alias | @server_list_file) [ -c <COMMAND> args... ]');
+defined $files || &usage();
+&usage() if $files=~/^--?h/;
 
 my %Config;
-open CFG, $CONFIG_FILE || die "Cannot find config file $CONFIG_FILE";
-while (<CFG>){chomp;$Config{$1}=$2 if (/\s*(\w+)\s+(.*)/)}
-close CFG;
+if (-f $CONFIG_FILE) {
+	open CFG, $CONFIG_FILE;
+	while (<CFG>){chomp;$Config{$1}=$2 if (/\s*(\w+)\s+(.*)/)}
+	close CFG;
+} else {
+    # default configuration
+	$Config{'SBIRE_LIST'} = "$ROOT_DIR/etc/server_list.txt";
+	
+}
 
 # Loads the configuration
 our @SBIRES;
@@ -83,7 +94,7 @@ if ($files=~s/^\@//) {
 	my $ifiles = $files;
 	$files=~s/\*/.*/g;
 	$files=".*" if (lc $files eq 'all');
-	my @slist = grep /$files/i, grep /\w/, @SBIRES;
+	my @slist = grep /^$files$/i, grep /\w/, @SBIRES;
 	print "$ifiles\tServer not found in server list" unless @slist;
 	map { &process($_) } @slist;
 	exit(0);
@@ -92,6 +103,22 @@ if ($files=~s/^\@//) {
 
 # ------------------------------------------------
 
+sub usage() {
+	print "Sbire_Sergeant : $Version";
+	print 'Usage : sb_sergeant.pl list';
+	print '        sb_sergeant.pl <SERVER_NAME> [--csv] [ -c <COMMAND> args... ]';
+	print '        sb_sergeant.pl @<LIST_FILE>  [--csv] [ -c <COMMAND> args... ]';
+	print '        sb_sergeant.pl    all        [--csv] [ -c <COMMAND> args... ]';
+	print "Commands : ";
+	print "   -c upload   -f <local_file> -n <filename> ";
+	print "   -c download -n <filename> [-f <local_file>]";
+	print "   -c run -- <cmdline>";
+	print "   -c config -- <name> <value>";
+	print "   -c options";
+	print "   -c info [ -n <plugin_name> ]";
+	print "   -c restart";
+	exit(1);
+}
 #
 #
 #
@@ -127,10 +154,18 @@ sub process() {
 		$cmd="$MASTER -H $name -P $protocol $sshcmd @args";
 	}
 	
+	if (uc $protocol eq 'SSH') {
+		my $sshpath = &getConf($alias,'SSH-SBIRE-PATH');
+		my $sshcfg = &getConf($alias,'SSH-SBIRE-CFG'); 
+		shift @args;
+		$cmd=qq!$MASTER -H $name -P $protocol -p "$sshpath $sshcfg" @args!;
+	}
+	
 	#print $cmd;
 	my $output = `$cmd`;
 	if ($CSV) {
 		# En sortie CSV, on prefixe toutes les lignes par le nom du serveur son adresse IP et le protocole
+		$output="\n" if $output eq '';
 		$output=~s/^/$alias\t/gm;
 	}
 	print $output;
@@ -155,7 +190,7 @@ sub readSbireFile() {
 	my ($file)=@_;
 	my %CONF;
 	my $lastAlias = '';
-	open CFG, $file or die('Cannot open $file.');
+	open CFG, $file or die("Cannot open $file.");
 	while (<CFG>) {
 		s/(#|;).*//;
 		next unless /\w/;

@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-my $Version= 'Version 0.9.16';
+my $Version= 'Version 0.9.21';
 
 ####################
 #
@@ -10,6 +10,11 @@ my $Version= 'Version 0.9.16';
 # Remote control script
 #
 # History : 0.9.16 : enable uploading of files under 2 levels of directory, or empty files
+#           0.9.17 : running command now also prints STDERR
+#           0.9.18 : STDERR now show in red
+#           0.9.19 : Can now upload absolute files
+#           0.9.20 : Major bugfix (upload could silently fail)
+#           0.9.21 : Shows OS with version
 #
 # Usage :
 #
@@ -131,7 +136,7 @@ __EOF__
 
  unless (defined $COMMAND) {
 	my $infos = "sbire.pl $Version ";
-	my @more = ();
+	my @more = ( $^O );
 	# TODO
 	push @more, $USE_RSA ? "RSA:pub=$PUBLIC_KEY" : "RSA:no";
 	print $infos." (" . join(", ",@more).")\n";
@@ -215,7 +220,7 @@ sub send {
 	
 	my $zlib = $ID=~s/\.z$//;
 	my $chunks = "$SESSIONDIR/$ID.chunks";
-	my $plugin = "$BASEDIR/$name";
+	my $plugin = $name=~/^\// ? $name : "$BASEDIR/$name";
 	
 	$plugin=$PUBLIC_KEY if ($name eq 'PUBLIC_KEY');
 	
@@ -266,7 +271,7 @@ sub send {
 	}
 	
 	# Ecrire le nouveau fichier
-	open OUTPUT, ">$plugin" || &error ("Cannot write to $plugin")&&return;
+        unless(open OUTPUT, ">$plugin") {return "Cannot write to $plugin"}
 	binmode OUTPUT;
 	{ local $\; print OUTPUT $content; }
 	close OUTPUT;
@@ -399,7 +404,20 @@ sub write_config {
 sub run {
 	return "Security Error : cannot use this command without RSA security enabled" unless ($USE_RSA || $ALLOW_UNSECURE_COMMAND);
 	chdir($BASEDIR);
-	return join'',qx!@_!;
+	use IPC::Open3;
+	my $pid=open3(\*WRITER,\*READER,\*ERROR,join ' ',@_);
+	my $output='';
+	while (<READER>) {
+		$output.=$_;
+		}
+	while (<ERROR>) {
+		s/^open3://mg;
+		s/ at ([\\\/]\w+)+[\\\/]sbire.pl line \d+//; # Remove reference to the sbire line no
+		s/^(.*)$/\033[1;31m\1\033[0m/gm;
+		$output.="$_";
+		}
+	waitpid($pid,0) or $output.="SBIRE WAITPID ERROR :: $!";
+	return $output;
 }
  
 sub download {
@@ -421,7 +439,7 @@ sub restart {
 sub info {
  	my ($name) = @_;
 	$name='*' unless defined $name;
-	my $PATH = $name=~/\d$/ ? $ARCHIVEDIR : $BASEDIR;
+	my $PATH = $name=~/\d$/ ? $ARCHIVEDIR : $name=~/^\// ? '' : $BASEDIR;
 	my $plugin = "$PATH/$name";
 	$plugin=$PUBLIC_KEY if ($name eq 'PUBLIC_KEY');
 	$plugin.="/*" if (-d $plugin);
