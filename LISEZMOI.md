@@ -32,7 +32,7 @@ Les OS suivants ont été testés (PERL =>5.8)
 	Solaris 9/10/11
 	Windows 2000/2003/2008/2012 (protocole NRPE de l'agent NSCLIENT)
 
-P
+
 
 <== Liste spécifiques au client X et ses serveurs sous Windows
 Install
@@ -47,14 +47,23 @@ Partie MAITRE
 La partie maitre sera installé par défaut dans le répertoire /usr/local/Sbire 
 
 ├── sbire_master.pl
+
 ├── sbire_rsa_keygen.pl
+
 └── sb_sergeant.pl
+
 ├── etc
+
        ├── sbire_master.conf   <== Parametre sbire_master.pl 
+
        ├── sb_sergeant.cfg     <== Parametre sb_sergeant.pl 
+
        ├── server_list.txt     <== Definition de tous les hosts géré par sbire 
+
        ├── clientX-windows.lst <== Liste spécifiques au client X et ses serveurs sous Windows
+
        └── clientX-linux.lst   <== Liste spécifiques au client X et ses serveurs sous Linux
+
        └── clientY.lst		   <== Liste spécifiques au client Y pour tous ses serveur
 
 Partie ESCLAVE
