@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-my $Version= 'Version 0.9.21';
+my $Version= 'Version 0.9.22';
 
 ####################
 #
@@ -15,6 +15,7 @@ my $Version= 'Version 0.9.21';
 #           0.9.19 : Can now upload absolute files
 #           0.9.20 : Major bugfix (upload could silently fail)
 #           0.9.21 : Shows OS with version
+#           0.9.22 : Fix archive error when user do not have access to the upload folder
 #
 # Usage :
 #
@@ -265,8 +266,10 @@ sub send {
 	# Archiver l'ancien fichier (s'il existe)
 	if (-f $plugin) {
 		unless (move($plugin,$archive)) {
-			# Archive didn't work
-			&error("Could not archive last revision. $archive or $plugin must be write protected.");
+			unless (copy($plugin,$archive)) {
+				# Archive didn't work (nor move nor copy)
+				&error("Could not archive last revision. $archive or $plugin must be write protected.");
+			}
 		}
 	}
 	
