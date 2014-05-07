@@ -4,7 +4,7 @@
 #
 # sbire_master.pl
 #
-# Version 0.9.8
+# Version 0.9.9
 #
 # Historique : 0.9.1 :  First public revision
 #              0.9.2 :  Improved configuration file
@@ -17,6 +17,7 @@
 #              0.9.6 :  The script can now be invoked from another directory
 #              0.9.7 :  Added SSH support
 #              0.9.8 :  Added NRPE command
+#              0.9.9 :  Added NRPE attributes
 # 
 # NRPE plugins update/manage master script
 #
@@ -27,7 +28,7 @@
 #         sbire_master.pl -H <IP> -P LOCAL|NRPE|SSH -c options
 #         sbire_master.pl -H <IP> -P LOCAL|NRPE|SSH -c info -n <name>
 #         sbire_master.pl -H <IP> -P LOCAL|NRPE|SSH -c restart
-#         sbire_master.pl -H <IP> -P NRPE           -c nrpe [ -n <name> ]
+#         sbire_master.pl -H <IP> -P NRPE           -c nrpe [ -n <name> ] [ -- <ATTRIBUTES> ]
 # 
 ####################
 
@@ -105,7 +106,7 @@ if ($command eq 'upload') {
 } elsif ($command eq 'info') {
 	&info($name);
 } elsif ($command eq 'nrpe') {
-	&nrpe($name);
+	&nrpe($name,$cmdline);
 } elsif ($command eq 'download') {
 	&download($file,$name,$verbose);
 } elsif ($command eq 'config') {
@@ -126,7 +127,7 @@ sub usage {
 	print "        sbire_master.pl -H <IP> -P LOCAL|NRPE|SSH -c options";
 	print "        sbire_master.pl -H <IP> -P LOCAL|NRPE|SSH -c info -n <name>";
 	print "        sbire_master.pl -H <IP> -P LOCAL|NRPE|SSH -c restart";
-	print "        sbire_master.pl -H <IP> -P NRPE           -c nrpe [ -n <name> ]";
+	print "        sbire_master.pl -H <IP> -P NRPE           -c nrpe [ -n <name> ] [ -- <parameters> ]";
 }
 sub error {
 	my ($msg)=@_;
@@ -147,8 +148,8 @@ sub info {
 }
 
 sub nrpe {
-    my ($name)=@_;
-	print get_output(&buildNrpeCmd($name));
+    my ($name,$params)=@_;
+	print get_output(&buildNrpeCmd($name, $params));
 }
 
 sub config {
@@ -342,7 +343,7 @@ sub get_output {
 }
 
 sub buildNrpeCmd() {
-	my ($name)=@_;
+	my ($name,$params)=@_;
 	my $cmd;
 	if (uc $protocol eq 'NRPE') {
 		my $nrpe_arg = $NRPEnossh ? "" : "-n";
@@ -354,6 +355,7 @@ sub buildNrpeCmd() {
 		}
 		$cmd=$nrpe_cmd;
 		$cmd .= " -c $name" if $name=~/\w/;
+		$cmd .= qq! -a "$params"! if $params;
 	} else {
 		&error("NRPE command incompatible with protocol '$protocol'.");
 	}
