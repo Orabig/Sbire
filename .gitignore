@@ -1,0 +1,6 @@
+# SSH keys are used to be stored in a .sb_key/ directory
+.sb_key
+
+# Ignore all configuration files except the samples
+etc/*
+!etc/*.sample
