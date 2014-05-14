@@ -141,7 +141,7 @@ sub error {
 
 sub run {
 	my ($cmdline,$dir)=@_;
-	$dir="[$dir]" if $dir;
+	$dir="-$dir-" if $dir;
 	print &call_sbire("run $name $dir $cmdline");
 }
 

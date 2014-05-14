@@ -49,8 +49,8 @@ my $Version= 'Version 0.9.23';
 #    sbire.pl <CFG> config <line>
 #		Write the given line in the configuration file. Will not work if the config is locked.
 #
-#    sbire.pl <CFG> run [ "[" <dir> "]" ] <cmdline>
-#		Runs the given command line. An optional basedir is given between [..]
+#    sbire.pl <CFG> run [ "-" <dir> "-" ] <cmdline>
+#		Runs the given command line. An optional basedir is given between -..-
 #
 #    sbire.pl <CFG> service (TODO : Planned)
 #       Loops and waits for "orders" to execute. The process thus runs indefinitely. It looks for data sources
@@ -411,7 +411,7 @@ sub write_config {
 sub run {
 	my @cmdline = @_;
 	my $dir=$BASEDIR;
-	if ($cmdline[0] =~ /^\[(.*)\]$/) {
+	if ($cmdline[0] =~ /^-(.*)-$/) {
 		$dir=$1;
 		shift @cmdline;
 	}
