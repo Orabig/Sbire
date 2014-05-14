@@ -4,7 +4,7 @@
 #
 # sbire_master.pl
 #
-# Version 0.9.10
+# Version 0.9.11
 #
 # Historique : 0.9.1 :  First public revision
 #              0.9.2 :  Improved configuration file
@@ -19,6 +19,7 @@
 #              0.9.8 :  Added NRPE command
 #              0.9.9 :  Added NRPE attributes
 #              0.9.10:  Added the optional -d <dir> argument to run command
+#              0.9.10:  fix : command lines may now contain "--"
 # 
 # NRPE plugins update/manage master script
 #
@@ -389,19 +390,16 @@ sub buildCmd() {
 
 sub getOptions() {
         my %varRef=@_;
-        my $ARGS = join ' ',@ARGV;
-        my $ARG1='';
-        my $ARG2='';
-        ($ARG1,$ARG2) = split / *--/, $ARGS;
-        if (defined $ARG2) {
-                if (defined $varRef{'-'}) {
-                        ${$varRef{'-'}} = $ARG2;
-                } else {
+        $_ = join ' ',@ARGV;
+        if (/^(.*?) --(.*)/) {
+                if (!defined $varRef{'-'}) {
                         print "Parametre -- non defini";exit 3;
                 }
+				$_=$1;
+				${$varRef{'-'}} = $2;
         }
-        return if (!defined $ARG1);
-        my @array = split / *-([a-zA-Z])(?: |$)/,$ARG1;
+        return if (!defined $_);
+        my @array = split / *-([a-zA-Z])(?: |$)/,$_;
         my %params;
         if ((+ @array)%2 == 0) {
                 (undef,%params) = (@array,'');
