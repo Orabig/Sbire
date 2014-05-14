@@ -1,0 +1,10 @@
+# Sbire specific aliases and functions
+
+alias s='/opt/adm/sbire/sb_sergeant.pl $SBIRE_TARGET'
+alias c='s -c'
+alias r='c run --csv --'
+
+connect(){
+  export SBIRE_TARGET=$1
+  s --csv
+  }
