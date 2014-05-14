@@ -4,7 +4,7 @@
 #
 # sbire_master.pl
 #
-# Version 0.9.9
+# Version 0.9.10
 #
 # Historique : 0.9.1 :  First public revision
 #              0.9.2 :  Improved configuration file
@@ -18,12 +18,13 @@
 #              0.9.7 :  Added SSH support
 #              0.9.8 :  Added NRPE command
 #              0.9.9 :  Added NRPE attributes
+#              0.9.10:  Added the optional -d <dir> argument to run command
 # 
 # NRPE plugins update/manage master script
 #
 # Usage : sbire_master.pl -H <IP> -P LOCAL|NRPE|SSH -c upload -n <name> -f <file> [ -v 1 ]
 #         sbire_master.pl -H <IP> -P LOCAL|NRPE|SSH -c download -n <name> -f <file>
-#         sbire_master.pl -H <IP> -P LOCAL|NRPE|SSH -c run -- <cmdline>
+#         sbire_master.pl -H <IP> -P LOCAL|NRPE|SSH -c run [-d <dir>] -- <cmdline>
 #         sbire_master.pl -H <IP> -P LOCAL|NRPE|SSH -c config -- <OPTION> <value>
 #         sbire_master.pl -H <IP> -P LOCAL|NRPE|SSH -c options
 #         sbire_master.pl -H <IP> -P LOCAL|NRPE|SSH -c info -n <name>
@@ -72,7 +73,7 @@ _EOF_
 use MIME::Base64; 
 use Digest::MD5 qw(md5_hex);
  
-my ($protocol,$command,$dest,$file,$name,$cmdline,$NRPEnossh,$ssh_path);
+my ($protocol,$command,$dest,$file,$name,$cmdline,$dir,$NRPEnossh,$ssh_path);
 my ($help,$verbose);
 &getOptions(
 	"P" => \$protocol,
@@ -83,6 +84,7 @@ my ($help,$verbose);
 	"n" => \$name,
 	"S" => \$NRPEnossh,
 	"f" => \$file,
+	"d" => \$dir,
 	"-" => \$cmdline,
 	"h" => \$help
 );
@@ -114,7 +116,7 @@ if ($command eq 'upload') {
 } elsif ($command eq 'options') {
 	&options();
 } elsif ($command eq 'run') {
-	&run($name,$cmdline);
+	&run($cmdline,$dir);
 } else {
 	&error("Command '$command' unknown");
 }
@@ -122,7 +124,7 @@ if ($command eq 'upload') {
 sub usage {
 	print "Usage : sbire_master.pl -H <IP> -P LOCAL|NRPE|SSH -c upload -n <name> -f <file>";
 	print "        sbire_master.pl -H <IP> -P LOCAL|NRPE|SSH -c download -n <name> [-f <file>]";
-	print "        sbire_master.pl -H <IP> -P LOCAL|NRPE|SSH -c run -- <cmdline>";
+	print "        sbire_master.pl -H <IP> -P LOCAL|NRPE|SSH -c run [-d <dir>] -- <cmdline>";
 	print "        sbire_master.pl -H <IP> -P LOCAL|NRPE|SSH -c config -- <OPTION> <value>";
 	print "        sbire_master.pl -H <IP> -P LOCAL|NRPE|SSH -c options";
 	print "        sbire_master.pl -H <IP> -P LOCAL|NRPE|SSH -c info -n <name>";
@@ -138,8 +140,9 @@ sub error {
 # -----------------------------------------------
 
 sub run {
-	my ($name,$cmdline)=@_;
-	print &call_sbire("run $name $cmdline");
+	my ($cmdline,$dir)=@_;
+	$dir="[$dir]" if $dir;
+	print &call_sbire("run $name $dir $cmdline");
 }
 
 sub info {

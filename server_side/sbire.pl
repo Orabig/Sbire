@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-my $Version= 'Version 0.9.22';
+my $Version= 'Version 0.9.23';
 
 ####################
 #
@@ -16,6 +16,7 @@ my $Version= 'Version 0.9.22';
 #           0.9.20 : Major bugfix (upload could silently fail)
 #           0.9.21 : Shows OS with version
 #           0.9.22 : Fix archive error when user do not have access to the upload folder
+#           0.9.23 : Run command now accepts an optional basedir
 #
 # Usage :
 #
@@ -48,7 +49,10 @@ my $Version= 'Version 0.9.22';
 #    sbire.pl <CFG> config <line>
 #		Write the given line in the configuration file. Will not work if the config is locked.
 #
-#    sbire.pl <CFG> service
+#    sbire.pl <CFG> run [ "[" <dir> "]" ] <cmdline>
+#		Runs the given command line. An optional basedir is given between [..]
+#
+#    sbire.pl <CFG> service (TODO : Planned)
 #       Loops and waits for "orders" to execute. The process thus runs indefinitely. It looks for data sources
 #       defined in a "channel" list for orders documents, that have the following structure : {"ID":"<int>", 
 #       "type":"<transfert|exec|info>", "fle":"<base64_encrypted_content>", "name":"<filename>"}
@@ -251,7 +255,7 @@ sub send {
 		$content = uncompress($content);
 		}
 	
-	# Verification : la signature doit êe correcte
+	# Verification : la signature doit êcorrecte
 	$signature=decode_base64($signature);
 
 	if ($USE_RSA) {
@@ -405,10 +409,16 @@ sub write_config {
  }
  
 sub run {
+	my @cmdline = @_;
+	my $dir=$BASEDIR;
+	if ($cmdline[0] =~ /^\[(.*)\]$/) {
+		$dir=$1;
+		shift @cmdline;
+	}
 	return "Security Error : cannot use this command without RSA security enabled" unless ($USE_RSA || $ALLOW_UNSECURE_COMMAND);
-	chdir($BASEDIR);
+	return "Could not CHDIR to $dir" unless chdir($dir);
 	use IPC::Open3;
-	my $pid=open3(\*WRITER,\*READER,\*ERROR,join ' ',@_);
+	my $pid=open3(\*WRITER,\*READER,\*ERROR,join ' ',@cmdline);
 	my $output='';
 	while (<READER>) {
 		$output.=$_;
@@ -564,3 +574,4 @@ sub newChunkId() {
 	}
 	1;
  }
+

@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-my $Version= 'Version 0.9.14';
+my $Version= 'Version 0.9.15';
 
 ####################
 #
@@ -16,6 +16,7 @@ my $Version= 'Version 0.9.14';
 #              0.9.12:  Added SSH support
 #              0.9.13:  Fixed output on empty result with CSV option
 #              0.9.14:  Default configuration when sb_sergeant.cfg does not exist
+#              0.9.15:  Added the optional -d <dir> argument to run command
 # 
 # Knows about a list of servers, and delegates to sb_master.pl to send them commands in group
 #
@@ -112,7 +113,7 @@ sub usage() {
 	print "Commands : ";
 	print "   -c upload   -f <local_file> -n <filename> ";
 	print "   -c download -n <filename> [-f <local_file>]";
-	print "   -c run -- <cmdline>";
+	print "   -c run [-d <dir>] -- <cmdline>";
 	print "   -c config -- <name> <value>";
 	print "   -c options";
 	print "   -c info [ -n <plugin_name> ]";
