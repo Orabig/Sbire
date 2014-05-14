@@ -25,6 +25,7 @@ my $Version= 'Version 0.9.16';
 #      or sb_sergeant.pl alias*            [--csv] [ -c <COMMAND> args... ]
 #      or sb_sergeant.pl all               [--csv] [ -c <COMMAND> args... ]
 #      or sb_sergeant.pl list
+#      or sb_sergeant.pl ......            --local <COMMANDS>   (use __ALIAS__ to get the target server name, and __TARGET__ to get the IP)
 #
 # /etc/sb_sergeant.cfg must exist and define SBIRE_LIST path
 # 
@@ -46,6 +47,10 @@ my $files = shift @ARGV;
 # On recherche la presence d'une option --csv dans les arguments
 our $CSV = grep /^--csv$/, @ARGV;
 @ARGV = grep !/^--csv$/, @ARGV;
+# On recherche la presence d'une option --local dans les arguments
+our $LOCAL = grep /^--local$/, @ARGV;
+@ARGV = grep !/^--local$/, @ARGV;
+
 undef $\ if $CSV;
 
 defined $files || &usage();
@@ -111,6 +116,7 @@ sub usage() {
 	print '        sb_sergeant.pl <SERVER_NAME> [--csv] [ -c <COMMAND> args... ]';
 	print '        sb_sergeant.pl @<LIST_FILE>  [--csv] [ -c <COMMAND> args... ]';
 	print '        sb_sergeant.pl    all        [--csv] [ -c <COMMAND> args... ]';
+	print '        sb_sergeant.pl ......         --local <COMMANDS>   ( __NAME__ and __TARGET__ are replaced by the target alias and IP resp.)';
 	print "Commands : ";
 	print "   -c upload   -f <local_file> -n <filename> ";
 	print "   -c download -n <filename> [-f <local_file>]";
@@ -142,25 +148,35 @@ sub process() {
 	} 
 	print $header unless ($CSV || $download) && !$MULTIPLE;
 	
-	# Local (mainly for testing)
-	if (uc $protocol eq 'LOCAL') {
-		$cmd="$MASTER -H $name -P $protocol @args";
-	}
-	
-	if (uc $protocol eq 'NRPE') {
-		my $use_ssh = &getConf($alias,'NRPE-USE-SSH');
-		my $port = &getConf($alias,'NRPE-PORT');
+	if ($LOCAL) {
+		# This is a local command (master and sbire are not used)
+
+		$cmd = join " ",@args;
+		$cmd=~s/__NAME__/$alias/g;
+		$cmd=~s/__TARGET__/$name/g;
+		# It is much more easy to print the command line to understand what is going on...
+		print "LOCAL> $cmd";
+	} else {	
+		# Local protocol (mainly for testing : not very useful to use sbire to run local commands)
+		if (uc $protocol eq 'LOCAL') {
+			$cmd="$MASTER -H $name -P $protocol @args";
+		}
 		
-		$name.=":$port" if ($port);
-		my $sshcmd = $use_ssh ? '' : '-S 1';
-		$cmd="$MASTER -H $name -P $protocol $sshcmd @args";
-	}
-	
-	if (uc $protocol eq 'SSH') {
-		my $sshpath = &getConf($alias,'SSH-SBIRE-PATH');
-		my $sshcfg = &getConf($alias,'SSH-SBIRE-CFG'); 
-		shift @args;
-		$cmd=qq!$MASTER -H $name -P $protocol -p "$sshpath $sshcfg" @args!;
+		elsif (uc $protocol eq 'NRPE') {
+			my $use_ssh = &getConf($alias,'NRPE-USE-SSH');
+			my $port = &getConf($alias,'NRPE-PORT');
+			
+			$name.=":$port" if ($port);
+			my $sshcmd = $use_ssh ? '' : '-S 1';
+			$cmd="$MASTER -H $name -P $protocol $sshcmd @args";
+		}
+		
+		elsif (uc $protocol eq 'SSH') {
+			my $sshpath = &getConf($alias,'SSH-SBIRE-PATH');
+			my $sshcfg = &getConf($alias,'SSH-SBIRE-CFG'); 
+			shift @args;
+			$cmd=qq!$MASTER -H $name -P $protocol -p "$sshpath $sshcfg" @args!;
+		}
 	}
 	
 	#print $cmd;
