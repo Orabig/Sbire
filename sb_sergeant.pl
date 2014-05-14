@@ -164,12 +164,12 @@ sub process() {
 		}
 		
 		elsif (uc $protocol eq 'NRPE') {
-			my $use_ssh = &getConf($alias,'NRPE-USE-SSH');
+			my $use_ssl = &getConf($alias,'NRPE-USE-SSL');
 			my $port = &getConf($alias,'NRPE-PORT');
 			
 			$name.=":$port" if ($port);
-			my $sshcmd = $use_ssh ? '' : '-S 1';
-			$cmd="$MASTER -H $name -P $protocol $sshcmd @args";
+			my $sslcmd = $use_ssl ? '' : '-S 1'; # If NRPE-USE-SSL 0 in server_list, then -S 1 is passed to master (will add -n option to nrpe)
+			$cmd="$MASTER -H $name -P $protocol $sslcmd @args";
 		}
 		
 		elsif (uc $protocol eq 'SSH') {

@@ -38,7 +38,7 @@ use strict;
 $\=$/;
 
 my $CONFIGFILE;
-our ($CHUNK_SIZE, $privkey, $NRPE, $USE_ZLIB_COMPRESSION, $USE_RSA, $USE_SSH);
+our ($CHUNK_SIZE, $privkey, $NRPE, $USE_ZLIB_COMPRESSION, $USE_RSA);
 {
 	# Default config file
 	my $ROOT_DIR = $0;$ROOT_DIR=~s!/[^/]*$!!;
@@ -58,7 +58,6 @@ our ($CHUNK_SIZE, $privkey, $NRPE, $USE_ZLIB_COMPRESSION, $USE_RSA, $USE_SSH);
 \$CHUNK_SIZE = 832;
 \$privkey = '/usr/local/nagios/bin/sbire_key.private';
 \$NRPE = '/usr/local/nagios/libexec/check_nrpe';
-\$USE_SSH = 1;
 \$USE_RSA = 1;
 \$USE_ZLIB_COMPRESSION = 1;
 1;
@@ -74,7 +73,7 @@ _EOF_
 use MIME::Base64; 
 use Digest::MD5 qw(md5_hex);
  
-my ($protocol,$command,$dest,$file,$name,$cmdline,$dir,$NRPEnossh,$ssh_path);
+my ($protocol,$command,$dest,$file,$name,$cmdline,$dir,$NRPEnossl,$ssh_path);
 my ($help,$verbose);
 &getOptions(
 	"P" => \$protocol,
@@ -83,7 +82,7 @@ my ($help,$verbose);
 	"H" => \$dest,
 	"v" => \$verbose,
 	"n" => \$name,
-	"S" => \$NRPEnossh,
+	"S" => \$NRPEnossl, # -S 1 means that NRPE command must use the -n option (NO SSL)
 	"f" => \$file,
 	"d" => \$dir,
 	"-" => \$cmdline,
@@ -350,7 +349,7 @@ sub buildNrpeCmd() {
 	my ($name,$params)=@_;
 	my $cmd;
 	if (uc $protocol eq 'NRPE') {
-		my $nrpe_arg = $NRPEnossh ? "" : "-n";
+		my $nrpe_arg = $NRPEnossl ? "-n" : "";
 		my $nrpe_cmd;
 		if ($dest=~/^(.*):(\d+)$/) {
 			$nrpe_cmd="$NRPE -H $1 -p $2 $nrpe_arg";
@@ -370,7 +369,7 @@ sub buildCmd() {
 	my ($args)=@_;
 	my $cmd;
 	if (uc $protocol eq 'NRPE') {
-		my $nrpe_arg = $NRPEnossh ? "" : "-n";
+		my $nrpe_arg = $NRPEnossl ? "-n" : "";
 		my $nrpe_cmd;
 		if ($dest=~/^(.*):(\d+)$/) {
 			$nrpe_cmd="$NRPE -H $1 -p $2 $nrpe_arg";
