@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-my $Version= 'Version 0.9.15';
+my $Version= 'Version 0.9.16';
 
 ####################
 #
@@ -17,6 +17,7 @@ my $Version= 'Version 0.9.15';
 #              0.9.13:  Fixed output on empty result with CSV option
 #              0.9.14:  Default configuration when sb_sergeant.cfg does not exist
 #              0.9.15:  Added the optional -d <dir> argument to run command
+#              0.9.16:  The server_list file can now contain characters after the server name/IP
 # 
 # Knows about a list of servers, and delegates to sb_master.pl to send them commands in group
 #
@@ -84,7 +85,7 @@ if ($files=~s/^\@//) {
 		} else {
 			print "$_\tServer not found in server list\n";
 		}
-	} grep /\w/, map {s/(#|;).*//;$_} <LST>;
+	} grep /\w/, map {s/[#; ].*//;$_} <LST>;
 	close LST;
 	exit(0);
 	}
