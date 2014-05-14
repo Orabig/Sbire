@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-my $Version= 'Version 0.9.16';
+my $Version= 'Version 0.9.17';
 
 ####################
 #
@@ -18,6 +18,7 @@ my $Version= 'Version 0.9.16';
 #              0.9.14:  Default configuration when sb_sergeant.cfg does not exist
 #              0.9.15:  Added the optional -d <dir> argument to run command
 #              0.9.16:  The server_list file can now contain characters after the server name/IP
+#              0.9.17:  __NAME__ and __TARGET__ may now be used in all commands
 # 
 # Knows about a list of servers, and delegates to sb_master.pl to send them commands in group
 #
@@ -177,6 +178,12 @@ sub process() {
 			shift @args;
 			$cmd=qq!$MASTER -H $name -P $protocol -p "$sshpath $sshcfg" @args!;
 		}
+		
+		else {
+			# TODO : Warn the user that his configuration is incorrect (unknown protocol)
+		}
+		$cmd=~s/__NAME__/$alias/g;
+		$cmd=~s/__TARGET__/$name/g;
 	}
 	
 	#print $cmd;
