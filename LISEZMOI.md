@@ -1,4 +1,4 @@
-Présentation
+=Présentation=
 
 Sbire est un outil client/serveur, permettant via NRPE de maintenir les configurations, d’exécuter des commandes à distances ou de transférer des fichiers. 
 Son fonctionnement est basé sur 3 scripts
@@ -25,7 +25,6 @@ Ce protocole est facultatif, mais La mise en place de cette sécurité est haute
 
 Via NRPE SBIRE a été testé sur different agent NRPE , il est fonctionnel sur des version 2.9 ou supérieur. 
 
-
 Les OS suivants ont été testés (PERL =>5.8)
 	Unix/Linux
 	Aix 5/6
@@ -35,39 +34,38 @@ Les OS suivants ont été testés (PERL =>5.8)
 
 
 
-<== Liste spécifiques au client X et ses serveurs sous Windows
-Install
+=Install=
 
-Pré-requis : 
+
+==Partie MAITRE==
+
+===Pré-requis :=== 
 
 	check_nrpe 
 	PERL => 5.8
 	
-Partie MAITRE
+La partie maitre sera installé par défaut dans notre exemple dans le répertoire /usr/local/Sbire. 
 
-La partie maitre sera installé par défaut dans le répertoire /usr/local/Sbire 
-
-   ├── sbire_master.pl
-   ├── sbire_rsa_keygen.pl
-   └── sb_sergeant.pl
-   ├── etc
+├── sbire_master.pl
+├── sbire_rsa_keygen.pl
+├── sb_sergeant.pl
+└── etc
        ├── sbire_master.conf   <== Parametre sbire_master.pl 
        ├── sb_sergeant.cfg     <== Parametre sb_sergeant.pl 
        ├── server_list.txt     <== Definition de tous les hosts géré par sbire 
        ├── clientX-windows.lst <== Liste spécifiques au client X et ses serveurs sous Windows
-       └── clientX-linux.lst   <== Liste spécifiques au client X et ses serveurs sous Linux
+       ├── clientX-linux.lst   <== Liste spécifiques au client X et ses serveurs sous Linux
        └── clientY.lst		   <== Liste spécifiques au client Y pour tous ses serveur
 
-Partie ESCLAVE
+==Partie ESCLAVE==
 
-Pré-requis : 
+===Pré-requis :=== 
 
-   	NRPE >= 2.9 compilé avec l'option --enable-args  
-   	PERL >= 5.8
+	NRPE >= 2.9 compilé avec l'option --enable-args  
+	PERL >= 5.8
 	
 Au préalable vous avez installé correctement l'agent NRPE sur le serveur distant à superviser.
 activez dans le fichier nrpe.cfg l'option dont_blame_nrpe=1 pour accepter le passage des arguments. 
-
 
 sbire.pl doit etre copié sur le serveur à superviser . 
 Vous devriez le placer dans le repertoire  contenant les plugins de supervisions. (Dans notre exemple /usr/nagios/libexec/.)
@@ -78,81 +76,124 @@ Editez nrpe.cfg et rajoutez les lignes suivantes (adaptez les path à vos instal
 
 Il est conseillé par la suite de séparer les commandes dans un fichier à part :
 
-include=/usr/local/nagios/etc/nrpe-command.cfg
+   include=/usr/local/nagios/etc/nrpe-command.cfg
 
 Cela permettra de ne modifier que cette partie pour ajouter/effacer/modifier les plugins. 
 
 Créer le fichier de configuration sbire.conf 
 
 
- /usr/local/nagios/etc/sbire.conf 
-
-SESSIONDIR = /usr/local/nagios/tmp/sbire
-ARCHIVEDIR =/usr/local/nagios/tmp/sbire/archive
-BASEDIR = /usr/local/nagios
-PUBLIC_KEY = /usr/local/nagios/etc/sbire_rsa.pub
-NRPE_SERVICE_NAME = nrpe
-USE_RSA_DC_BASED_IMPLEMENTATION=1
-USE_RSA = 0
-ALLOW_UNSECURE_UPLOAD = 1
-CONFIG_LOCKED = 0
+   /usr/local/nagios/etc/sbire.conf 
+   
+   SESSIONDIR = /usr/local/nagios/tmp/sbire
+   ARCHIVEDIR =/usr/local/nagios/tmp/sbire/archive
+   BASEDIR = /usr/local/nagios
+   PUBLIC_KEY = /usr/local/nagios/etc/sbire_rsa.pub
+   NRPE_SERVICE_NAME = nrpe
+   USE_RSA_DC_BASED_IMPLEMENTATION=1
+   USE_RSA = 0
+   ALLOW_UNSECURE_UPLOAD = 1
+   CONFIG_LOCKED = 0
 (...)
-serverlist.txt
 
-(If the remote server is Linux) : Type the following line :
 
-echo "nagios ALL = NOPASSWD: which service" >>/etc/sudoers
-which will allow the nagios user to restart the NRPE service (which will be very helpful)
+=Configuration= 
 
-Restart the NRPE server.
+==serverlist.txt==
 
-sudo service nrpe restart
-
-Configuration 
 
 Une fois la partie maitre et la partie Esclave installé il faut préparer le fichier server_list.txt pour les hosts intérrogeable par sbire ainsi que les listes spécifiques.
+Ce fichier contient donc la liste de tout les serveurs supervisés et leurs parametres de connexion (Port NRPE , PARAMETRE SSL
 
+   # Server list
+   # Alias	IP/Name		Protocol
+   
+   # DEFAULT ATTRIBUTES :
+   
+   # DEFINE CHECK_NRPE SSL SWITCH ( check-nrpe -n -H SERVERX ) 
+   	NRPE-USE-SSL	0
+   # DEFINE COMMUNICATION PORT FOR NRPE AGENT	
+   	   NRPE-PORT	5666
+   
+   
+   # SERVER DEFINITION
+   
+   SERVER1 	192.168.1.1 	NRPE
+   SERVER2		192.168.100.2	NRPE
+     	NRPE-PORT	3181
+   SERVER3		192.168.100.2	NRPE
+     	NRPE-SSL	1
+   SERVER4		192.168.100.2	NRPE
+     	NRPE-PORT	3181
+     	NRPE-SSL	1
+		
 
+Crétion d'un filtre par liste. 
 
+liste.txt
+   SERVER1
+   SERVER4
 
-Utilisation
+==Utilisation==
 
 (les scripts sbire.pl et sbire_master.pl n’étant pas destinés à être lancés manuellement, il n’est question ici que de la syntaxe d’utilisation de sb_sergeant.pl)
 
 Le premier argument est obligatoire, et peut prendre les valeurs suivantes :
 
-·       all : la commande sera exécutée sur tous les serveurs du fichier de configuration server_list
-·       <NOM> : la commande sera exécutée sur tous les serveurs dont le nom commence par <NOM>.
-·       @<liste> : la commande sera exécutée sur les serveurs contenu dans le fichier <liste> (un nom de serveur par ligne)
+   ·       all : la commande sera exécutée sur tous les serveurs du fichier de configuration server_list.txt
+   ·       <NOM> : la commande sera exécutée sur le serveur <NOM>.
+   ·       @<liste> : la commande sera exécutée sur les serveurs contenu dans le fichier <liste> (un nom de serveur par ligne)
 
  L’argument –c permet ensuite de définir la commande à lancer. Si aucune commande n’est définit, sb_sergeant se contente d’interroger sbire qui lui renvoie son numéro de version.
  Cela permet de vérifier que la configuration et la connexion sont correctes.
 
 ./sb_sergeant.pl SERVER(vide)
 
-Renvoie le numéro de version de sbire.pl (Le Type d'OS et la valeur de USE_RSA)
+Renvoie le numéro de version de sbire.pl (Le Type d'OS et la valeur de USE_RSA et le PATH vers la Clé publique)
 
 ./sb_sergeant.pl SERVER -c (vide)
 Affiche la liste des commandes pouvant etre passée a sbire.
  
-
+== OPTIONS : -c info ==
 ./sb_sergeant.pl SERVER -c info
 
-Récupère la taille, version et signature du fichier distant :
+Récupère les informations la taille, version et signature du/des fichier(s) distant(s) :
 	du répertoire de base 
-	avec l'option (–n) d'un fichiers dans l'agent
-	
-	Exemple
-	
+	avec l'option (–n) d'un fichier dans l'agent
 
+
+ 
+== OPTIONS : -c download ==
 ./sb_sergeant.pl SERVER -c download
 
 Copie le fichier distant (-n) vers le fichier local (-f) ou STDOUT
+    Exemple :
+	./sb_sergeant.pl SERVER -c download -n etc/nrpe.cfg -f nrpe.cfg-SERVER
+	
+	Exemple
+	---------------------------
+   |SERVER (192.168.0.XX)     |
+    ---------------------------
+   ....OK
+   
+ Le fichier à été récupéré via NRPE en tant que nrpe.cfg-NRPE
+  
+== OPTIONS : -c upload ==
 
-./sb_sergeant.pl SERVER -c upload
+./sb_sergeant.pl SERVER -c upload 
 
 Copie le fichier local (-f) vers le fichier distant (-n)
 
+    Exemple :
+	./sb_sergeant.pl SERVER -c upload -n etc/nrpe.cfg -f nrpe.cfg-SERVER
+	
+	Exemple
+	---------------------------
+   |SERVER (192.168.0.XX)     |
+    ---------------------------
+   ....OK
+   
+== OPTIONS : -c run ==
 ./sb_sergeant.pl SERVER -c run -- commande
 
 Exécute une commande à distance (--)
