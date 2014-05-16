@@ -80,7 +80,9 @@ if (lc $files eq 'list') {
 
 my $MULTIPLE = ($files=~/^\@/) || ($files=~/^all$/i);
 
-if ($files=~s/^\@//) {
+$MULTIPLE=0 if $LOCAL && !/__(NAME|TARGET)__/; # Only one iteration if file=='all' but the command is local and no MACRO is used
+
+if ($MULTIPLE && $files=~s/^\@//) {
 	# open file list
 	-f "$CONFIG_DIR/$files.lst" || die ("$CONFIG_DIR/$files.lst not found");	
 	open LST, "$CONFIG_DIR/$files.lst";
@@ -104,7 +106,10 @@ if ($files=~s/^\@//) {
 	$files=".*" if (lc $files eq 'all');
 	my @slist = grep /^$files$/i, grep /\w/, @SBIRES;
 	print "$ifiles\tServer not found in server list" unless @slist;
-	map { &process($_) } @slist;
+	map { 
+		&process($_);
+		last unless $MULTIPLE;
+		} @slist;
 	exit(0);
 	}
 
@@ -114,17 +119,16 @@ if ($files=~s/^\@//) {
 sub usage() {
 	print "Sbire_Sergeant : $Version";
 	print 'Usage : sb_sergeant.pl list';
-	print '        sb_sergeant.pl <SERVER_NAME> [--csv] [ -c <COMMAND> args... ]';
-	print '        sb_sergeant.pl @<LIST_FILE>  [--csv] [ -c <COMMAND> args... ]';
-	print '        sb_sergeant.pl    all        [--csv] [ -c <COMMAND> args... ]';
-	print '        sb_sergeant.pl ......         --local <COMMANDS>   ( __NAME__ and __TARGET__ are replaced by the target alias and IP resp.)';
+	print '        sb_sergeant.pl <SERVER_NAME> [--csv] [--local] [ -c <COMMAND> args... ]';
+	print '        sb_sergeant.pl @<LIST_FILE>  [--csv] [--local] [ -c <COMMAND> args... ]';
+	print '        sb_sergeant.pl    all        [--csv] [--local] [ -c <COMMAND> args... ]';
 	print "Commands : ";
 	print "   -c upload   -f <local_file> -n <filename> ";
 	print "   -c download -n <filename> [-f <local_file>]";
 	print "   -c run [-d <dir>] -- <cmdline>";
 	print "   -c config -- <name> <value>";
 	print "   -c options";
-	print "   -c info [ -n <plugin_name> ]";
+	print "   -c info [ -n <plugin_path> ]";
 	print "   -c restart";
 	exit(1);
 }
@@ -138,27 +142,41 @@ sub process() {
 	my $protocol=$sbire{'PROTOCOL'};
 	my @args = @ARGV;
 
-	my $cmd;
-	my $download = grep /^download$/, @args;
+	# TODO : This should be rewritten
+	my $command = lc(join '%',@args); $command=~s/(^|.*\%)-c\%([^\%]+)(\%.*|$)/$2/;
 
-	my $header=""; 
-	unless ($CSV) {
-		$header="| $alias ($name) |"; 
-		my $line="-" x length $header; 
-		$header="$line\n$header\n$line";
-	} 
-	print $header unless ($CSV || $download) && !$MULTIPLE;
-	
+	my $cmd;
 	if ($LOCAL) {
 		# This is a local command (master and sbire are not used)
-
-		$cmd = join " ",@args;
-		$cmd=~s/__NAME__/$alias/g;
-		$cmd=~s/__TARGET__/$name/g;
-		# It is much more easy to print the command line to understand what is going on...
-		print "LOCAL> $cmd";
+		
+		# For now, only 2 commands are supported : run and info
+		if ($command eq 'run') {
+			$cmd = join " ",@args; 
+			unless ($cmd=~s/.*--//) {
+				print "ERROR : No command defined";return;
+			}
+			# It is much more easy to print the command line to understand what is going on...
+			print "LOCAL> $cmd";
+		} elsif ($command eq 'info') {
+			# TODO : This must be rewritten
+		    my $file = join '%',@args; $file=~s/(^|.*\%)-n\%([^\%]+)(\%.*|$)/$2/;
+			# TODO : this could be better of course.
+			my $sbire_path = $0; $sbire_path=~s/sb_sergeant/server_side\/sbire/;
+			$cmd="/usr/bin/perl $sbire_path --direct info $file";
+		} else {
+			print "ERROR : $command is not available with --local option.";return;
+		}
+			
 	} else {	
 		# Local protocol (mainly for testing : not very useful to use sbire to run local commands)
+		my $header=""; 
+		unless ($CSV) {
+			$header="| $alias ($name) |"; 
+			my $line="-" x length $header; 
+			$header="$line\n$header\n$line";
+		} 
+		print $header unless ($CSV || $command eq 'download') && !$MULTIPLE;
+		
 		if (uc $protocol eq 'LOCAL') {
 			$cmd="$MASTER -H $name -P $protocol @args";
 		}
@@ -182,13 +200,17 @@ sub process() {
 		else {
 			# TODO : Warn the user that his configuration is incorrect (unknown protocol)
 		}
-		$cmd=~s/__NAME__/$alias/g;
-		$cmd=~s/__TARGET__/$name/g;
 	}
+	$cmd=~s/__NAME__/$alias/g;
+	$cmd=~s/__TARGET__/$name/g;
 	
 	#print $cmd;
 	my $output = `$cmd`;
-	if ($CSV) {
+	if ($?) {
+		print "ERROR : $!\n$output";
+		return;
+		}
+	if ($CSV && ! $LOCAL) {
 		# En sortie CSV, on prefixe toutes les lignes par le nom du serveur son adresse IP et le protocole
 		$output="\n" if $output eq '';
 		$output=~s/^/$alias\t/gm;
