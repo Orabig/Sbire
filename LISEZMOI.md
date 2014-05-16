@@ -46,32 +46,23 @@ Partie MAITRE
 
 La partie maitre sera installé par défaut dans le répertoire /usr/local/Sbire 
 
-├── sbire_master.pl
-
-├── sbire_rsa_keygen.pl
-
-└── sb_sergeant.pl
-
-├── etc
-
+   ├── sbire_master.pl
+   ├── sbire_rsa_keygen.pl
+   └── sb_sergeant.pl
+   ├── etc
        ├── sbire_master.conf   <== Parametre sbire_master.pl 
-
        ├── sb_sergeant.cfg     <== Parametre sb_sergeant.pl 
-
        ├── server_list.txt     <== Definition de tous les hosts géré par sbire 
-
        ├── clientX-windows.lst <== Liste spécifiques au client X et ses serveurs sous Windows
-
        └── clientX-linux.lst   <== Liste spécifiques au client X et ses serveurs sous Linux
-
        └── clientY.lst		   <== Liste spécifiques au client Y pour tous ses serveur
 
 Partie ESCLAVE
 
 Pré-requis : 
 
-	NRPE >= 2.9 compilé avec l'option --enable-args  
-	PERL >= 5.8
+   	NRPE >= 2.9 compilé avec l'option --enable-args  
+   	PERL >= 5.8
 	
 Au préalable vous avez installé correctement l'agent NRPE sur le serveur distant à superviser.
 activez dans le fichier nrpe.cfg l'option dont_blame_nrpe=1 pour accepter le passage des arguments. 
@@ -82,7 +73,7 @@ Vous devriez le placer dans le repertoire  contenant les plugins de supervisions
 
 Editez nrpe.cfg et rajoutez les lignes suivantes (adaptez les path à vos install ) :
 
-command[sbire]=/usr/local/nagios/libexec/sbire.pl /usr/local/nagios/etc/sbire.conf $ARG1$ $ARG2$ $ARG3$ $ARG4$ $ARG5$ 2>&1
+   command[sbire]=/usr/local/nagios/libexec/sbire.pl /usr/local/nagios/etc/sbire.conf $ARG1$ $ARG2$ $ARG3$ $ARG4$ $ARG5$ 2>&1
 
 Il est conseillé par la suite de séparer les commandes dans un fichier à part :
 
