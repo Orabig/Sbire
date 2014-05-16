@@ -25,6 +25,7 @@ Ce protocole est facultatif, mais La mise en place de cette sécurité est haute
 
 Via NRPE SBIRE a été testé sur different agent NRPE , il est fonctionnel sur des version 2.9 ou supérieur. 
 
+
 Les OS suivants ont été testés (PERL =>5.8)
 	Unix/Linux
 	Aix 5/6
