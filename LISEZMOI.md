@@ -39,23 +39,24 @@ Les OS suivants ont été testés (PERL =>5.8)
 
 ##Partie MAITRE##
 
-###Pré-requis :### 
+###Pré-requis : 
 
-	check_nrpe 
-	PERL => 5.8
+1. check_nrpe 
+2. PERL => 5.8
 	
 La partie maitre sera installé par défaut dans notre exemple dans le répertoire /usr/local/Sbire. 
 
-├── sbire_master.pl
-├── sbire_rsa_keygen.pl
-├── sb_sergeant.pl
-└── etc
-       ├── sbire_master.conf   <== Parametre sbire_master.pl 
-       ├── sb_sergeant.cfg     <== Parametre sb_sergeant.pl 
-       ├── server_list.txt     <== Definition de tous les hosts géré par sbire 
-       ├── clientX-windows.lst <== Liste spécifiques au client X et ses serveurs sous Windows
-       ├── clientX-linux.lst   <== Liste spécifiques au client X et ses serveurs sous Linux
-       └── clientY.lst		   <== Liste spécifiques au client Y pour tous ses serveur
+   ├── sbire_master.pl  
+   ├── sbire_rsa_keygen.pl  
+   ├── sb_sergeant.pl  
+   └── etc  
+       ├── sbire_master.conf   <== Parametre sbire_master.pl   
+       ├── sb_sergeant.cfg     <== Parametre sb_sergeant.pl   
+       ├── server_list.txt     <== Definition de tous les hosts géré par sbire   
+       ├── clientX-windows.lst <== Liste spécifiques au client X et ses serveurs sous Windows  
+       ├── clientX-linux.lst   <== Liste spécifiques au client X et ses serveurs sous Linux  
+       └── clientY.lst		   <== Liste spécifiques au client Y pour tous ses serveur  
+
 
 ==Partie ESCLAVE==
 
