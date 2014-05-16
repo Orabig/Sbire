@@ -6,7 +6,7 @@ Son fonctionnement est basé sur 3 scripts
 * sbire_master.pl et sb_sergeant coté client (le poller depuis lequel on lance la commande)
 
 
-![alt text](/Sbire/tree/doc/docs/img/sbire.png "Title")
+![alt text](https://github.com/sdouce/Sbire/blob/doc/docs/img/sbire.png?raw=true "Title")
 
 Le rôle de sbire_master est d’utiliser le protocole NRPE  pour appeler sbire à distance sur le serveur.
 Le rôle de sb_sergeant est de permettre d’exécuter la même requête sur plusieurs serveurs à la fois en une seule commande, en se basant sur un fichier contenant la liste des serveurs et leur configuration (protocole à utiliser). Il est donc conseillé d’utiliser systématiquement sb_sergeant qui est plus simple d’utilisation que sbire_master (à qui il faut passer tous les paramètres de connexion).
