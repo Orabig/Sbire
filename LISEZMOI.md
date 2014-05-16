@@ -1,10 +1,9 @@
-=Présentation=
+#Présentation#
 
 Sbire est un outil client/serveur, permettant via NRPE de maintenir les configurations, d’exécuter des commandes à distances ou de transférer des fichiers. 
 Son fonctionnement est basé sur 3 scripts
-
-                ·    sbire.pl coté serveur (la machine à interroger / piloter)
-                ·    sbire_master.pl et sb_sergeant coté client (le poller depuis lequel on lance la commande)
+* sbire.pl coté serveur (la machine à interroger / piloter)
+* sbire_master.pl et sb_sergeant coté client (le poller depuis lequel on lance la commande)
 			
 
 Le rôle de sbire_master est d’utiliser le protocole NRPE  pour appeler sbire à distance sur le serveur.
