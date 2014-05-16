@@ -11,11 +11,11 @@ Le rôle de sb_sergeant est de permettre d’exécuter la même requête sur plu
 
 
 Les rôles de sbire sont 
-	* Maintenir la supervision des agents NRPE (Gestion des configuration)
-	* Deployer de nouveaux plugins ou de nouvelles versions de ceux-ci
-	* Controler les niveaux de versions, de l'agent, des fichiers de configurations, des plugins. (CheckSum).
-	* Transferer dans les deux sens des fichiers de ou dans l'agent NRPE
-	* Executer des commandes
+* Maintenir la supervision des agents NRPE (Gestion des configuration)
+* Deployer de nouveaux plugins ou de nouvelles versions de ceux-ci
+* Controler les niveaux de versions, de l'agent, des fichiers de configurations, des plugins. (CheckSum).
+* Transferer dans les deux sens des fichiers de ou dans l'agent NRPE
+* Executer des commandes
 
 Toutes ces actions peuvent etre effectuées unitairement ou en masse.  
 	
@@ -25,11 +25,11 @@ Ce protocole est facultatif, mais La mise en place de cette sécurité est haute
 Via NRPE SBIRE a été testé sur different agent NRPE , il est fonctionnel sur des version 2.9 ou supérieur. 
 
 Les OS suivants ont été testés (PERL =>5.8)
-	Unix/Linux
-	Aix 5/6
-	HPUX 10/11
-	Solaris 9/10/11
-	Windows 2000/2003/2008/2012 (protocole NRPE de l'agent NSCLIENT)
+* Unix/Linux
+* Aix 5/6
+* HPUX 10/11
+* Solaris 9/10/11
+* Windows 2000/2003/2008/2012 (protocole NRPE de l'agent NSCLIENT)
 
 
 
