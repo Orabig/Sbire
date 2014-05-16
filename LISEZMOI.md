@@ -33,12 +33,11 @@ Les OS suivants ont été testés (PERL =>5.8)
 
 
 
-=Install=
+#Install#
 
+##Partie MAITRE##
 
-==Partie MAITRE==
-
-===Pré-requis :=== 
+###Pré-requis :### 
 
 	check_nrpe 
 	PERL => 5.8
