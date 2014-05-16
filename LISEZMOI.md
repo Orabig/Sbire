@@ -46,34 +46,36 @@ Les OS suivants ont été testés (PERL =>5.8)
 	
 La partie maitre sera installé par défaut dans notre exemple dans le répertoire /usr/local/Sbire. 
 
-   ├── sbire_master.pl  
-   ├── sbire_rsa_keygen.pl  
-   ├── sb_sergeant.pl  
-   └── etc  
-       ├── sbire_master.conf   <== Parametre sbire_master.pl   
-       ├── sb_sergeant.cfg     <== Parametre sb_sergeant.pl   
-       ├── server_list.txt     <== Definition de tous les hosts géré par sbire   
-       ├── clientX-windows.lst <== Liste spécifiques au client X et ses serveurs sous Windows  
-       ├── clientX-linux.lst   <== Liste spécifiques au client X et ses serveurs sous Linux  
-       └── clientY.lst		   <== Liste spécifiques au client Y pour tous ses serveur  
+├── sbire_master.pl  
+├── sbire_rsa_keygen.pl  
+├── sb_sergeant.pl  
+└── etc  
+	    ├── sbire_master.conf   <== Parametre sbire_master.pl   
+	├── sb_sergeant.cfg     <== Parametre sb_sergeant.pl   
+	├── server_list.txt     <== Definition de tous les hosts géré par sbire   
+	├── clientX-windows.lst <== Liste spécifiques au client X et ses serveurs sous Windows  
+	├── clientX-linux.lst   <== Liste spécifiques au client X et ses serveurs sous Linux  
+	└── clientY.lst		   <== Liste spécifiques au client Y pour tous ses serveur  
 
 
-==Partie ESCLAVE==
 
-===Pré-requis :=== 
 
-	NRPE >= 2.9 compilé avec l'option --enable-args  
-	PERL >= 5.8
+##Partie ESCLAVE
+
+###Pré-requis : 
+
+1. NRPE >= 2.9 compilé avec l'option **--enable-args**  
+2. PERL >= 5.8
 	
 Au préalable vous avez installé correctement l'agent NRPE sur le serveur distant à superviser.
-activez dans le fichier nrpe.cfg l'option dont_blame_nrpe=1 pour accepter le passage des arguments. 
+activez dans le fichier **nrpe.cfg** l'option **dont_blame_nrpe=1** pour accepter le passage des arguments. 
 
-sbire.pl doit etre copié sur le serveur à superviser . 
+**sbire.pl** doit etre copié sur le serveur à superviser . 
 Vous devriez le placer dans le repertoire  contenant les plugins de supervisions. (Dans notre exemple /usr/nagios/libexec/.)
 
 Editez nrpe.cfg et rajoutez les lignes suivantes (adaptez les path à vos install ) :
 
-   command[sbire]=/usr/local/nagios/libexec/sbire.pl /usr/local/nagios/etc/sbire.conf $ARG1$ $ARG2$ $ARG3$ $ARG4$ $ARG5$ 2>&1
+    command[sbire]=/usr/local/nagios/libexec/sbire.pl /usr/local/nagios/etc/sbire.conf $ARG1$ $ARG2$ $ARG3$ $ARG4$ $ARG5$ 2>&1
 
 Il est conseillé par la suite de séparer les commandes dans un fichier à part :
 
@@ -98,9 +100,9 @@ Créer le fichier de configuration sbire.conf
 (...)
 
 
-=Configuration= 
+#Configuration#
 
-==serverlist.txt==
+##serverlist.txt##
 
 
 Une fois la partie maitre et la partie Esclave installé il faut préparer le fichier server_list.txt pour les hosts intérrogeable par sbire ainsi que les listes spécifiques.
@@ -129,13 +131,13 @@ Ce fichier contient donc la liste de tout les serveurs supervisés et leurs para
      	NRPE-SSL	1
 		
 
-Crétion d'un filtre par liste. 
+##Création d'un filtre par liste## 
 
 liste.txt
    SERVER1
    SERVER4
 
-==Utilisation==
+##Utilisation##
 
 (les scripts sbire.pl et sbire_master.pl n’étant pas destinés à être lancés manuellement, il n’est question ici que de la syntaxe d’utilisation de sb_sergeant.pl)
 
@@ -154,8 +156,8 @@ Renvoie le numéro de version de sbire.pl (Le Type d'OS et la valeur de USE_RSA 
 
 ./sb_sergeant.pl SERVER -c (vide)
 Affiche la liste des commandes pouvant etre passée a sbire.
- 
-== OPTIONS : -c info ==
+
+## OPTIONS : -c info ##
 ./sb_sergeant.pl SERVER -c info
 
 Récupère les informations la taille, version et signature du/des fichier(s) distant(s) :
@@ -164,7 +166,7 @@ Récupère les informations la taille, version et signature du/des fichier(s) di
 
 
  
-== OPTIONS : -c download ==
+## OPTIONS : -c download ##
 ./sb_sergeant.pl SERVER -c download
 
 Copie le fichier distant (-n) vers le fichier local (-f) ou STDOUT
@@ -179,7 +181,7 @@ Copie le fichier distant (-n) vers le fichier local (-f) ou STDOUT
    
  Le fichier à été récupéré via NRPE en tant que nrpe.cfg-NRPE
   
-== OPTIONS : -c upload ==
+## OPTIONS : -c upload ##
 
 ./sb_sergeant.pl SERVER -c upload 
 
@@ -194,7 +196,7 @@ Copie le fichier local (-f) vers le fichier distant (-n)
     ---------------------------
    ....OK
    
-== OPTIONS : -c run ==
+## OPTIONS : -c run ##
 ./sb_sergeant.pl SERVER -c run -- commande
 
 Exécute une commande à distance (--)
@@ -203,16 +205,19 @@ Exécute une commande à distance (--)
 
 Change la valeur d’une option dans le fichier de configuration distant sbire.conf
 
+## OPTIONS : -c options ##
+
 ./sb_sergeant.pl SERVER -c options
 
 Affiche la liste des paramètres distants
 
+## OPTIONS : -c restart ##
 ./sb_sergeant.pl SERVER -c restart
 
 Relance le service NRPE (serveur distant Unix seulement pour les agents en daemon, pas xinetd)
 
 
-Configuration
+#Configuration sbire.cfg#
 
 Chaque script sbire distant gère son propre fichier de configuration, qui contient les options qui lui sont propres. 
 Il est possible de modifier la valeur de ces options avec la commande « -c config »
