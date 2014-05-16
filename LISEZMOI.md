@@ -167,6 +167,7 @@ Récupère les informations la taille, version et signature du/des fichier(s) di
 
  
 ## OPTIONS : -c download ##
+
 ./sb_sergeant.pl SERVER -c download
 
 Copie le fichier distant (-n) vers le fichier local (-f) ou STDOUT
@@ -197,7 +198,8 @@ Copie le fichier local (-f) vers le fichier distant (-n)
    ....OK
    
 ## OPTIONS : -c run ##
-./sb_sergeant.pl SERVER -c run -- commande
+
+    ./sb_sergeant.pl SERVER -c run -- commande
 
 Exécute une commande à distance (--)
 
@@ -207,12 +209,13 @@ Change la valeur d’une option dans le fichier de configuration distant sbire.c
 
 ## OPTIONS : -c options ##
 
-./sb_sergeant.pl SERVER -c options
+    ./sb_sergeant.pl SERVER -c options
 
 Affiche la liste des paramètres distants
 
 ## OPTIONS : -c restart ##
-./sb_sergeant.pl SERVER -c restart
+
+    ./sb_sergeant.pl SERVER -c restart
 
 Relance le service NRPE (serveur distant Unix seulement pour les agents en daemon, pas xinetd)
 
@@ -222,93 +225,87 @@ Relance le service NRPE (serveur distant Unix seulement pour les agents en daemo
 Chaque script sbire distant gère son propre fichier de configuration, qui contient les options qui lui sont propres. 
 Il est possible de modifier la valeur de ces options avec la commande « -c config »
 
+
+
+
 [root@POLLER sbire-master]# ./sb_sergeant.pl SERVER -c config -- OPTION valeur
 
  
+## DEFINITION DES OPTIONS 
 
-Nom
 
-défaut
+###BASE64_TRANSFERT
 
-Description
-
-BASE64_TRANSFERT
-
-1 (=vrai)
+    1 (=vrai)
 
 Indique si les données envoyées au maitre par sbire doivent être encodées en Base64. Ceci permet d’éviter l’interprétation des données par NSClient++ qui interprète le caractère |.
 
-OUTPUT_LIMIT
+###OUTPUT_LIMIT
 
-640
+    640
 
 Permet de limiter le nombre de caractères à envoyer au maitre, afin de rester compatible avec le protocole NRPE.
 
-USE_RSA
+###USE_RSA
 
-0 (=faux)
+    0 (=faux)
 
 Indique si les fichiers et les commandes envoyés par le maitre doivent être signés.
 
-PUBLIC_KEY
-
--
+###PUBLIC_KEY
 
 Le chemin vers le fichier de clé publique coté esclave, qui permet de vérifier la signature des fichiers et des commandes.
 
-USE_RSA_DC
+###USE_RSA_DC
 
-_BASED_IMPLEMENTATION
-
-0 (=faux)
+   0 (=faux)
 
 Permet d’utiliser “dc” pour calculer la signature RSA en cas d’absence du module Perl Crypt ::RSA.
 
-DC_PATH
+###DC_PATH
 
-‘dc’
+    ‘dc’
 
 Le chemin vers le programme “dc”.
 
-ALLOW_UNSECURE_UPLOAD
+###ALLOW_UNSECURE_UPLOAD
 
-0
+    0
 
 Permet d’utiliser la fonction upload même si USE_RSA=0
 
-ALLOW_UNSECURE_COMMAND
+###ALLOW_UNSECURE_COMMAND
 
-0
+    0
 
 Permet d’utiliser la fonction run même si USE_RSA=0
 
-NRPE_SERVICE_NAME
+###NRPE_SERVICE_NAME
 
-‘nrpe’
+    ‘nrpe’
 
 Le nom du service NRPE, qui est relancé quand on appelle la commande restart (esclave Linux uniquement)
 
-CONFIG_LOCKED
+###CONFIG_LOCKED
 
-1
+    1
 
 Si =1, alors il est impossible de modifier les options.
 
-SESSIONDIR
+###SESSIONDIR
 
--
 
 Le répertoire où sont stockés les fichiers de session
 
-ARCHIVEDIR
+###ARCHIVEDIR
 
--
+
 
 Le répertoire où sont stockés les versions successives des fichiers uploadés
 
-BASEDIR
+###BASEDIR
 
--
+
 
 Le répertoire qui sert de base aux chemins relatifs.
 
@@ -317,7 +314,7 @@ Le répertoire qui sert de base aux chemins relatifs.
 
 Message d’erreur :
 
-Security Error : cannot use this command without RSA security enabled
+    Security Error : cannot use this command without RSA security enabled
 
 Explication :
 
@@ -331,7 +328,7 @@ Il suffit d’activer le protocole RSA (config USE_RSA 1) ou de permettre l’ut
 
 ---------------------------
 
-| SERVEUR (194.2.53.44) |
+| SERVEUR1 (192.168.0.1) |
 
 ---------------------------
 
@@ -343,14 +340,13 @@ OK
 
 Message d’erreur :
 
-Configuration is locked
+    Configuration is locked
 
 Explication :
 
 Soit la configuration a été "lockée" sur l'esclave, soit sbire a été déployé sans fichier de configuration, et donc la configuration est LOCKED par défaut. Dans tous les cas, la configuration ne peut plus être modifiée par le maitre.
 
  
-
 Résolution :
 
 Se connecter manuellement à l'esclave, et modifier le fichier de configuration pour ajouter CONFIG_LOCKED = 0
