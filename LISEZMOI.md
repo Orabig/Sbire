@@ -11,11 +11,11 @@ Le rôle de sb_sergeant est de permettre d’exécuter la même requête sur plu
 
 
 Les rôles de sbire sont 
-	Maintenir la supervision des agents NRPE (Gestion des configuration)
-	Deployer de nouveaux plugins ou de nouvelles versions de ceux-ci
-	Controler les niveaux de versions, de l'agent, des fichiers de configurations, des plugins. (CheckSum).
-	Transferer dans les deux sens des fichiers de ou dans l'agent NRPE
-	Executer des commandes
+	* Maintenir la supervision des agents NRPE (Gestion des configuration)
+	* Deployer de nouveaux plugins ou de nouvelles versions de ceux-ci
+	* Controler les niveaux de versions, de l'agent, des fichiers de configurations, des plugins. (CheckSum).
+	* Transferer dans les deux sens des fichiers de ou dans l'agent NRPE
+	* Executer des commandes
 
 Toutes ces actions peuvent etre effectuées unitairement ou en masse.  
 	
