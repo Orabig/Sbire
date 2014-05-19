@@ -46,18 +46,16 @@ Les OS suivants ont été testés (PERL =>5.8)
 	
 La partie maitre sera installé par défaut dans notre exemple dans le répertoire /usr/local/Sbire. 
 
-├─ sbire_master.pl  
-├─ sbire_rsa_keygen.pl  
-├─ sb_sergeant.pl  
-└─ etc  
-   '	'	├── sbire_master.conf   <== Parametre sbire_master.pl   
-   '	'	├── sb_sergeant.cfg     <== Parametre sb_sergeant.pl   
-   '	'	├── server_list.txt     <== Definition de tous les hosts géré par sbire   
-   '	'	├── clientX-windows.lst <== Liste spécifiques au client X et ses serveurs sous Windows  
-   '	'	├── clientX-linux.lst   <== Liste spécifiques au client X et ses serveurs sous Linux  
-   '	'	└── clientY.lst		   <== Liste spécifiques au client Y pour tous ses serveur  
-
-
+    ├─ sbire_master.pl  
+    ├─ sbire_rsa_keygen.pl  
+    ├─ sb_sergeant.pl  
+    └─ etc  
+       		├── sbire_master.conf   <== Parametre sbire_master.pl   
+       		├── sb_sergeant.cfg     <== Parametre sb_sergeant.pl   
+       		├── server_list.txt     <== Definition de tous les hosts géré par sbire   
+       		├── clientX-windows.lst <== Liste spécifiques au client X et ses serveurs sous Windows  
+       		├── clientX-linux.lst   <== Liste spécifiques au client X et ses serveurs sous Linux  
+       		└── clientY.lst		   <== Liste spécifiques au client Y pour tous ses serveur  
 
 
 ##Partie ESCLAVE
@@ -88,16 +86,17 @@ Créer le fichier de configuration sbire.conf
 
    /usr/local/nagios/etc/sbire.conf 
    
-   SESSIONDIR = /usr/local/nagios/tmp/sbire
-   ARCHIVEDIR =/usr/local/nagios/tmp/sbire/archive
-   BASEDIR = /usr/local/nagios
-   PUBLIC_KEY = /usr/local/nagios/etc/sbire_rsa.pub
-   NRPE_SERVICE_NAME = nrpe
-   USE_RSA_DC_BASED_IMPLEMENTATION=1
-   USE_RSA = 0
-   ALLOW_UNSECURE_UPLOAD = 1
-   CONFIG_LOCKED = 0
-(...)
+
+       SESSIONDIR = /usr/local/nagios/tmp/sbire
+       ARCHIVEDIR =/usr/local/nagios/tmp/sbire/archive
+       BASEDIR = /usr/local/nagios
+       PUBLIC_KEY = /usr/local/nagios/etc/sbire_rsa.pub
+       NRPE_SERVICE_NAME = nrpe
+       USE_RSA_DC_BASED_IMPLEMENTATION=1
+       USE_RSA = 0
+       ALLOW_UNSECURE_UPLOAD = 1
+       CONFIG_LOCKED = 0
+    (...)
 
 
 #Configuration#
@@ -108,34 +107,35 @@ Créer le fichier de configuration sbire.conf
 Une fois la partie maitre et la partie Esclave installé il faut préparer le fichier server_list.txt pour les hosts intérrogeable par sbire ainsi que les listes spécifiques.
 Ce fichier contient donc la liste de tout les serveurs supervisés et leurs parametres de connexion (Port NRPE , PARAMETRE SSL
 
-   # Server list
-   # Alias	IP/Name		Protocol
-   
-   # DEFAULT ATTRIBUTES :
-   
-   # DEFINE CHECK_NRPE SSL SWITCH ( check-nrpe -n -H SERVERX ) 
-   	NRPE-USE-SSL	0
-   # DEFINE COMMUNICATION PORT FOR NRPE AGENT	
-   	   NRPE-PORT	5666
-   
-   
-   # SERVER DEFINITION
-   
-   SERVER1 	192.168.1.1 	NRPE
-   SERVER2		192.168.100.2	NRPE
-     	NRPE-PORT	3181
-   SERVER3		192.168.100.2	NRPE
-     	NRPE-SSL	1
-   SERVER4		192.168.100.2	NRPE
-     	NRPE-PORT	3181
-     	NRPE-SSL	1
-		
+       # Server list
+       # Alias	IP/Name		Protocol
+       
+       # DEFAULT ATTRIBUTES :
+       
+       # DEFINE CHECK_NRPE SSL SWITCH ( check-nrpe -n -H SERVERX ) 
+       	NRPE-USE-SSL	0
+       # DEFINE COMMUNICATION PORT FOR NRPE AGENT	
+       	   NRPE-PORT	5666
+       
+       
+       # SERVER DEFINITION
+       
+       SERVER1 	192.168.1.1 	NRPE
+       SERVER2		192.168.100.2	NRPE
+         	NRPE-PORT	3181
+       SERVER3		192.168.100.2	NRPE
+         	NRPE-SSL	1
+       SERVER4		192.168.100.2	NRPE
+         	NRPE-PORT	3181
+         	NRPE-SSL	1
+    		
 
 ##Création d'un filtre par liste## 
 
 liste.txt
-   SERVER1
-   SERVER4
+
+       SERVER1
+       SERVER4
 
 ##Utilisation##
 
@@ -175,10 +175,11 @@ Copie le fichier distant (-n) vers le fichier local (-f) ou STDOUT
 	./sb_sergeant.pl SERVER -c download -n etc/nrpe.cfg -f nrpe.cfg-SERVER
 	
 	Exemple
-	---------------------------
-   |SERVER (192.168.0.XX)     |
-    ---------------------------
-   ....OK
+    	---------------------------
+       |SERVER (192.168.0.XX)     |
+        ---------------------------
+       ....OK
+
    
  Le fichier à été récupéré via NRPE en tant que nrpe.cfg-NRPE
   
@@ -191,11 +192,12 @@ Copie le fichier local (-f) vers le fichier distant (-n)
     Exemple :
 	./sb_sergeant.pl SERVER -c upload -n etc/nrpe.cfg -f nrpe.cfg-SERVER
 	
-	Exemple
-	---------------------------
-   |SERVER (192.168.0.XX)     |
-    ---------------------------
-   ....OK
+
+    	---------------------------
+       |SERVER (192.168.0.XX)     |
+        ---------------------------
+       ....OK
+
    
 ## OPTIONS : -c run ##
 
@@ -213,14 +215,9 @@ Change la valeur d’une option dans le fichier de configuration distant sbire.c
 
 Affiche la liste des paramètres distants
 
-## OPTIONS : -c restart ##
-
-    ./sb_sergeant.pl SERVER -c restart
-
-Relance le service NRPE (serveur distant Unix seulement pour les agents en daemon, pas xinetd)
 
 
-#Configuration sbire.cfg#
+# Parametres de Configuration sbire.cfg#
 
 Chaque script sbire distant gère son propre fichier de configuration, qui contient les options qui lui sont propres. 
 Il est possible de modifier la valeur de ces options avec la commande « -c config »
@@ -228,7 +225,7 @@ Il est possible de modifier la valeur de ces options avec la commande « -c conf
 
 
 
-[root@POLLER sbire-master]# ./sb_sergeant.pl SERVER -c config -- OPTION valeur
+    [root@POLLER sbire-master]# ./sb_sergeant.pl SERVER -c config -- OPTION valeur
 
  
 ## DEFINITION DES OPTIONS 
@@ -333,9 +330,13 @@ Il suffit d’activer le protocole RSA (config USE_RSA 1) ou de permettre l’ut
 
  
 
+
+----------
+
+
  
 
-_Message d’erreur :_
+*Message d’erreur :*
 
     Configuration is locked
 
@@ -364,436 +365,130 @@ Il est possible de remplacer ce module (difficile à installer) par le programme
 
  
 
-# ./sb_sergeant.pl SERVEUR -c config -e "USE_RSA_DC_BASED_IMPLEMENTATION 1"
-
----------------------------
-
-| SERVEUR (194.2.53.44) |
-
----------------------------
-
-OK
+        ./sb_sergeant.pl SERVEUR -c config -e "USE_RSA_DC_BASED_IMPLEMENTATION 1"
+    
+    ---------------------------  
+    | SERVEUR (192.168.0.1)   |  
+     -------------------------  
+    
+    OK
 
  
 
  
+
+
+----------
+
 
 Message d’erreur :
 
-Public key file is empty or missing
+    Public key file is empty or missing
 
 Explication :
 
-La clé publique n'a pas été déposée sur le serveur distant
+    La clé publique n'a pas été déposée sur le serveur distant
 
 Résolution :
 
-Déposer la clé avec la commande :
-
-(TODO : rédiger la procédure)
-
-Il est aussi possible de désactiver tout simplement la sécurité RSA.
-
-# ./sb_sergeant.pl HPLAVIL04 -c config -e "USE_RSA 0"
-
----------------------------
-
-| HPLAVIL04 (194.2.53.44) |
-
----------------------------
-
-OK
+    Déposer la clé avec la commande :
+    
+    (TODO : rédiger la procédure)
+    
+    Il est aussi possible de désactiver tout simplement la sécurité RSA.
+    
+    # ./sb_sergeant.pl SERVEUR -c config -e "USE_RSA 0"
+    
+    ---------------------------  
+    | SERVEUR (192.168.0.1)   |  
+     -------------------------  
+    
+    OK
 
  
 
- 
+
+----------
+
 
 Message d’erreur :
 
-The command (…) returned an invalid return code: 255
-
-Explication :
-
-Le fichier distant sbire.pl est corrompu, endommagé ou manquant.
+    The command (…) returned an invalid return code: 255
+    
+   Explication :
+    
+    Le fichier distant sbire.pl est corrompu, endommagé ou manquant.
 
 Résolution :
 
-Il faut se connecter manuellement au serveur, et réparer le fichier ou relancer l'installation. Merci de sauvegarder l'historique des commandes envoyées à ce serveur, afin de trouver l'origine du problème en vue d'une correction.
+    Il faut se connecter manuellement au serveur, et réparer le fichier ou relancer l'installation. Merci de sauvegarder l'historique des commandes envoyées à ce serveur, afin de trouver l'origine du problème en vue d'une correction.
 
  
+
+
+----------
+
 
 Message d’erreur :
 
-Configuration error : PLUGINSDIR (C:/BT-NSCP64/sbire_temp) does not exist or is not writable
+    Configuration error : PLUGINSDIR (C:/NSCP64/sbire_temp) does not exist or is not writable
 
 Explication :
 
-La configuration de sbire coté serveur est incorrecte. Il peut s’agir d’un fichier de configuration 64 bits qui a été déployé sur une installation 32 bits (problème constaté lors du déployement ASFA)
+    La configuration de sbire coté serveur est incorrecte. Il peut s’agir d’un fichier de configuration 64 bits qui a été déployé sur une installation 32 bits
 
 Résolution :
 
-Il faut se connecter manuellement au serveur, et réparer le fichier ou relancer l'installation. La version 0.9.16 de sbire devrait normalement corriger ce message d’erreur si le cas venait à se reproduire.
+    Il faut se connecter manuellement au serveur, et réparer le fichier ou relancer l'installation. La version 0.9.16 de sbire devrait normalement corriger ce message d’erreur si le cas venait à se reproduire.
 
  
+
+
+----------
+
 
 Message d’erreur :
 
-Can't locate Config/Simple.pm in @INC (…)
+    Can't locate Config/Simple.pm in @INC (…)
 
 Explication :
 
-Les scripts (coté client) de sbire ont été installés, mais il manque la bibliothèque Perl Config::Simple.
+    Les scripts (coté client) de sbire ont été installés, mais il manque la bibliothèque Perl Config::Simple.
 
 Résolution :
 
-Mettre à jour sb_sergeant dans la version 0.9.6 minimum, qui n’utilise plus cette dépendance
+    Mettre à jour sb_sergeant dans la version 0.9.6 minimum, qui n’utilise plus cette dépendance
 
  
+
+
+----------
+
 
 Message d’erreur :
 
-Résultat d'un commande ressemble à
+    Résultat d'un commande ressemble à
+    
+        ---------------------------  
+        | SERVEUR (192.168.0.1)   |  
+         -------------------------  
+        
+    
+    b*64_IFZvbHVtZSBpbiBkcml2ZSBDIGhhcyBubyBsYWJlbC4KIFZvbHVtZSBTZXJpYWwgTnVtYmVyIGlzDBDMjktOUUzQgoKIERpcmVjdG9yeSBvZiBDOlxCVC1OU0NQNjQKCjA4LzAxLzIwMTMgIDEyOjI4
+    
 
------------------------------
-
-| Acronis-ASN (10.0.16.251) |
-
------------------------------
-
-b*64_IFZvbHVtZSBpbiBkcml2ZSBDIGhhcyBubyBsYWJlbC4KIFZvbHVtZSBTZXJpYWwgTnVtYmVyIGlz
-
-IDBDMjktOUUzQgoKIERpcmVjdG9yeSBvZiBDOlxCVC1OU0NQNjQKCjA4LzAxLzIwMTMgIDEyOjI4
-
-IFB(...)
-
- 
 
 Explication :
 
-La taille du "packet" d'échange avec sbire est trop grand par rapport à la configuration NRPE. Le packet encodé en Base64 ne se décode donc pas correctement.
+    La taille du "packet" d'échange avec sbire est trop grand par rapport à la configuration NRPE. Le packet encodé en Base64 ne se décode donc pas correctement.
 
 Résolution :
 
-Baisser la valeur de l’option OUTPUT_LIMIT (positionnée à 1024 sur certains serveurs, ce qui est trop haut pour l’implémentation dans NSclient++ du protocole NRPE)
-
- ./sb_sergeant.pl Acronis-ASN -c config -- OUTPUT_LIMIT 640
-
- 
-
- 
-
-
-4. Liste des astuces et commandes à savoir
-
-4.1. Mettre à jour un fichier de conf NSClient++ (Windows)
-
-4.1.1. Choses à savoir
-
-Dans les dernières versions du plugin, l'arborescence est la suivante :
-
-9  C:
-9  BT-NSCP32
-9  local
-9  scripts
-Le script sbire.pl est dans le répertoire scripts, et tout exécution de commande (ou téléchargement de fichier) se fera relativement à ce répertoire.
-
-Les fichiers commun.ini et specif.ini (configuration locale des plugins) sont dans le répertoire local.
-
-Le fichier nsclient.ini (configuration globale de nsclient++) est situé dans le répertoire BT-NSCP32.
-
- 
-
-Sous Windows, il est impossible à un process de couper le service qui l’a lancé. Il est donc techniquement impossible pour sbire de relancer NSClient++ (à la manière du client Linux qui peut relancer le service NRPE).
-
-L’agent pour Windows contient donc un service nommé ‘restart-nscp’ dont le rôle est de relancer le service ‘BT-NSClient++’. Une commande NRPE ‘restart’ a d’ailleurs été définie dans ce but.
-
-
-4.1.2. En résumé :
-
-ATTENTION : ces informations semblent erronées. Selon les serveurs, la base serait C:\BT-NSCP32. A vérifier.
-
-Fichier
-
-Emplacement
-
-Chemin relatif
-
-sbire.pl
-
-C:\BT-NSCP32\local\scripts
-
-.
-
-Tous les plugins
-
-C:\BT-NSCP32\local\scripts
-
-.
-
-commun.ini
-
-C:\BT-NSCP32\local
-
-..
-
-specif.ini
-
-C:\BT-NSCP32\local
-
-..
-
-nsclient.ini
-
-C:\BT-NSCP32
-
-..\..
-
- 
-
-Note : comment utiliser .. et le caractère \ avec un client sous Windows ?
-
-- Il faut avoir la version de sbire 0.9.13 (et sbire_master en 0.9.4) minimum. En effet, \  fait partie de la liste des caractères interdits par NRPE, et il n'est donc pas possible de définir un chemin relatif avant cette version (qui implémente un contournement).
-
-- Par ailleurs, le passage de paramêtre entre le shell Unix et le script perl (sb_sergent) oblige d'utiliser \\\\ (4 anti-slash) au lieu d'un seul, d'où les syntaxes ci-dessous.
-
-
-4.1.3. Exemple :
-
-Download, edition, puis upload de la configuration globale de NSClient++.
-
-# ./sb_sergeant.pl HPLAVIL04 -c download -n ..\\\\..\\\\nsclient.ini > tmp/nsclient.ini
-
-# dos2unix tmp/nsclient.ini
-
-# dos2unix tmp/nsclient.ini
-
-# vi tmp/nsclient.ini
-
-(...)
-
-# unix2dos tmp/nsclient.ini
-
-# ./sb_sergeant.pl HPLAVIL04 -c upload -n ..\\\\..\\\\nsclient.ini -f tmp/nsclient.ini
-
-Le service NSClient++ doit alors être relancé, et ceci se fait directement à partir de la commande NRPE 'reload' :
-
-# /usr/local/nagios/libexec/check_nrpe -H 194.2.53.44 -n -p 3180 -c reload
-
-The restart-nsc service is starting.
-
-The restart-nsc service was started successfully.
-
-[root@poller-btvlb-03 sbire-master]# /usr/local/nagios/libexec/check_nrpe -H 194.2.53.44 -n -p 3180
-
-I (0,4,1,89 2013-01-21) seem to be doing fine...
-
- 
-
-
-4.2. Mettre sbire.pl à jour
-
-Il est conseillé de commencer par vérifier le numéro de version distant de sbire, et surtout à quel endroit il est situé sur le serveur distant, avec la commande –c info.
-
-Sur un serveur Windows, le chemin relatif est local/scripts :
-
-[root@POLLER sbire-master]# ./sb_sergeant.pl DUDAD001 --csv -c info -n sbire.pl
-
-DUDAD001        sbire.pl does not exist in the plugin folder (C:/BT-NSCP32)
-
-[root@POLLER sbire-master]# ./sb_sergeant.pl DUDAD001 --csv -c info -n local/scripts/sbire.pl
-
-DUDAD001        local/scripts/sbire.pl  13741 bytes     Version 0.9.15  Signature : 34fbb59bdc9bfbc9d616818eabeb8793
-
-Sur un serveur Unix, le chemin relatif est libexec :
-
-[root@POLLER sbire-master]# ./sb_sergeant.pl SERVEUR --csv -c info -n libexec/sbire.pl
-
-SERVEUR libexec/sbire.pl        12833 bytes     Version 0.9.12  Signature : 76e04e910e3527221f590328f5a9c8bf
-
- 
-
-Exemple de mise à jour de sbire sur un serveur Unix
-
-# ./sb_sergeant.pl SERVEUR -c upload -n libexec/sbire.pl -f server_side/sbire.pl
-
----------------------------
-
-| SERVEUR (194.2.53.44) |
-
----------------------------
-
-.....................OK
-
- 
-
-# [root@POLLER sbire-master]# ./sb_sergeant.pl SERVEUR
-
----------------------------
-
-| SERVEUR (194.2.53.44) |
-
----------------------------
-
-Sbire.pl Version 0.9.15  (RSA:no)
-
-(TODO : Il faudra trouver un moyen de définir une variable pour l’emplacement relatif de sbire au BASE_DIR, ce qui permettrait de mettre à jour tous les serveurs en une fois)
+    La Version de l'agent doit etre auminimum pour NRPE egale ou supérieur a 2.9 . Les agent 2.5 ne fonctionnentpas . Pour Windows  il suffit de Baisser la valeur de l’option OUTPUT_LIMIT (positionnée à 1024 sur certains serveurs, ce qui est trop haut pour l’implémentation dans NSclient++ du protocole NRPE)
+    
+     ./sb_sergeant.pl SERVER -c config -- OUTPUT_LIMIT 640
 
  
 
  
 
-
-5. Aide mémoire des commandes pratiques pour Sbire :
-
-5.1. Mettre à jour un sbire Windows en version antérieure à 0.9.16
-
-Avant la version 0.9.16, plusieurs bugs rendaient difficile la mise à jour de sbire.
-
-[root@POLLER-ASIPMSS-01 sbire-master]# ./sb_sergeant.pl Acronis-ASN
-
------------------------------
-
-| Acronis-ASN (10.0.16.251) |
-
------------------------------
-
-Sbire.pl Version 0.9.11  (RSA:no)
-
- 
-
-[root@POLLER-ASIPMSS-01 sbire-master]# ./sb_sergeant.pl Acronis-ASN -c run -- cd
-
------------------------------
-
-| Acronis-ASN (10.0.16.251) |
-
------------------------------
-
-C:\BT-NSCP64
-
- 
-
- 
-
-[root@POLLER-ASIPMSS-01 sbire-master]# vi placeholder.txt (Créer un fichier contenant au moins 1 caractère)
-
- 
-
-[root@POLLER-ASIPMSS-01 sbire-master]# ./sb_sergeant.pl Acronis-ASN -c config -- USE_RSA 0
-
------------------------------
-
-| Acronis-ASN (10.0.16.251) |
-
------------------------------
-
-OK
-
- 
-
- 
-
-[root@POLLER-ASIPMSS-01 sbire-master]# ./sb_sergeant.pl Acronis-ASN -c upload -n local/placeholder.txt -f placeholder.txt
-
------------------------------
-
-| Acronis-ASN (10.0.16.251) |
-
------------------------------
-
-.OK
-
- 
-
-(Ces commandes créent les répertoires intermédiaires %ARCHIVE%/BT-NSCP64 et %ARCHIVE%/BT-NSCP64/local avant de pouvoir créer %ARCHIVE%/BT-NSCP64/local/scripts
-
- 
-
- 
-
- 
-
-[root@POLLER-ASIPMSS-01 sbire-master]# ./sb_sergeant.pl Acronis-ASN -c upload -n local/scripts/sbire.pl -f server_side/sbire.pl
-
------------------------------
-
-| Acronis-ASN (10.0.16.251) |
-
------------------------------
-
-.......................OK
-
- 
-
-[root@POLLER-ASIPMSS-01 sbire-master]# ./sb_sergeant.pl Acronis-ASN
-
------------------------------
-
-| Acronis-ASN (10.0.16.251) |
-
------------------------------
-
-sbire.pl Version 0.9.16  (RSA:no)
-
- 
-
- 
-
-
-Install
-
-Remote NRPE server install
-
-Au préalable vous avez installé correctement l'agent NRPE sur le serveur distant à superviser . Vérifiez à l'aide la commande  check_nrpe -H <IP> , cela vous retournera la version de NRPE utilisé
-
-sbire.pl doit etre copié sur le serveur à superviser . Vous devriez le placer dans le répertoire  contenant les plugins de supervisions. (Dans notre exemple /usr/local/nagios/libexec/.)
-
-Editez nrpe.cfg et rajoutez les lignes suivantes (adaptez les path à vos install ) :
-
-command[sbire]=/opt/nagios/libexec/sbire.pl /opt/nagios/etc/sbire.conf $ARG1$ $ARG2$ $ARG3$ $ARG4$ $ARG5$ 2>&1
-Il est conseillé par la suite de séparer les commandes dans un fichier à part :
-
-include=/opt/nagios/libexec/nrpe-command.cfg
-Cela permettra de ne modifier que cette partie pour ajouter/effacer/modifier les plugins. 
-
-Creer le fichier de configuration sbire.conf 
-
- /opt/nagios/etc/sbire.conf 
-
-SESSIONDIR = /opt/nagios/tmp/sbire
-ARCHIVEDIR = /opt/nagios/tmp/sbire/archive
-BASEDIR = /opt/nagios
-PUBLIC_KEY = /opt/nagios/etc/sbire_rsa.pub
-NRPE_SERVICE_NAME = nrpe
-USE_RSA_DC_BASED_IMPLEMENTATION=1
-USE_RSA = 0
-ALLOW_UNSECURE_UPLOAD = 1
-CONFIG_LOCKED = 0
-(...)
-(If the remote server is Linux) : Type the following line :
-
-echo "nagios ALL = NOPASSWD: which service" >>/etc/sudoers
-which will allow the nagios user to restart the NRPE service (which will be very helpful)
-
-Restart the NRPE server.
-
-sudo service nrpe restart
-Usage
-
-To check if configuration is correct, run :
-
-./sbire_master.pl -H $HOSTADDRESS$ 
-It should return  :
-
-sbire.pl Version 0.9.15
-To transfert or update a NRPE plugin, write :
-
-./sbire_master.pl -H -c update -n -f
-Where : is the name of the NRPE script (in the remote folder) is the filename of the script to transfert
-
-This will do the following :
-
-If and are identical, nothing is done (an MD5 comparison is performed)
-is sent to the NRPE server in a temporary folder (SESSION_FOLDER)
-If a file already exist, then it's archived
-The new file is written/replaced.
