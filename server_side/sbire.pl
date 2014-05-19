@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-my $Version= 'Version 0.9.23';
+my $Version= 'Version 0.9.24';
 
 ####################
 #
@@ -17,6 +17,7 @@ my $Version= 'Version 0.9.23';
 #           0.9.21 : Shows OS with version
 #           0.9.22 : Fix archive error when user do not have access to the upload folder
 #           0.9.23 : Run command now accepts an optional basedir
+#           0.9.24 : removed 'options'. 'config' can now work on alternate config files
 #
 # Usage :
 #
@@ -124,7 +125,7 @@ my $Version= 'Version 0.9.23';
 
 __EOF__
 	close CF;
-	&error("Canot write $CONF") unless (-e $CONF);
+	&error("Cannot write $CONF") unless (-e $CONF);
 	}
 
  &readConfig($CONF);
@@ -171,14 +172,12 @@ sub run_command {
 	{ &output(&download(@ARGS)) }
  elsif ($COMMAND eq 'run') 
 	{ &output(&run(@ARGS)) }
- elsif ($COMMAND eq 'options') 
-	{ &output(&read_config()) }
  elsif ($COMMAND eq 'restart') 
 	{ &output(&restart(@ARGS)) }
  elsif ($COMMAND eq 'continue') 
 	{ &output(&contn(@ARGS)) }
  elsif ($COMMAND eq 'config') 
-	{ &output(&write_config($CONF,@ARGS)) }
+	{ &output(&config($CONF,@ARGS)) }
  else 
 	{ &error("Sbire: Command '$COMMAND' unknown.") }
 }
@@ -355,7 +354,8 @@ sub readKeyFile() {
 	return $content;
  }
  
- sub read_config {
+## TODO : this cannot work with another file than the default config !
+ sub show_config {
 	my $list='';
 	foreach (@options) {
 		if (defined $$_) {
@@ -368,12 +368,23 @@ sub readKeyFile() {
 	return $list;
  }
  
-sub write_config {
-	my ($CONF,$VARIABLE,@VALUES) = @_;
+sub config {
+	# $CONF is the (default) configuration file
+	# $NAME is the user-given configuration file (or '-' if the default should be used)
+	# $VARIABLE is the name of the variable to read/change
+	# @VALUES contains the values to set the variable to
+	my ($CONF,$NAME,$VARIABLE,@VALUES) = @_;
+
+	unless ($NAME eq '-') {
+		$CONF=$NAME;
+		return "Cannot read an alternate config file (yet)..." unless defined $VARIABLE;
+	}
+
+	return show_config($CONF) unless defined $VARIABLE;
 	
 	# Verification : le fichier doit exister
 	&error("Configuration is locked.") if ($CONFIG_LOCKED);
-	
+
 	# Replace value in config file
 	open CF,$CONF or &error("Cannot open $CONF : $!");
 	{
