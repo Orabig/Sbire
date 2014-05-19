@@ -1,15 +1,18 @@
+
 #Présentation#
 
 Sbire est un outil client/serveur, permettant via NRPE de maintenir les configurations, d’exécuter des commandes à distances ou de transférer des fichiers. 
 Son fonctionnement est basé sur 3 scripts
-* sbire.pl coté serveur (la machine à interroger / piloter)
-* sbire_master.pl et sb_sergeant coté client (le poller depuis lequel on lance la commande)
+
+-  sbire.pl coté serveur (la machine à interroger / piloter)
+-  sbire_master.pl et sb_sergeant coté client (le poller depuis lequel on lance la commande)
 
 
 ![alt text](https://github.com/sdouce/Sbire/blob/doc/docs/img/sbire.png?raw=true "Title")
 
-Le rôle de sbire_master est d’utiliser le protocole NRPE  pour appeler sbire à distance sur le serveur.
-Le rôle de sb_sergeant est de permettre d’exécuter la même requête sur plusieurs serveurs à la fois en une seule commande, en se basant sur un fichier contenant la liste des serveurs et leur configuration (protocole à utiliser). Il est donc conseillé d’utiliser systématiquement sb_sergeant qui est plus simple d’utilisation que sbire_master (à qui il faut passer tous les paramètres de connexion).
+Le rôle de **sbire_master** est d’utiliser le protocole NRPE  pour appeler sbire à distance sur le serveur.
+
+Le rôle de **sb_sergeant** est de permettre d’exécuter la même requête sur plusieurs serveurs à la fois en une seule commande, en se basant sur un fichier contenant la liste des serveurs et leur configuration (protocole à utiliser). Il est donc conseillé d’utiliser systématiquement sb_sergeant qui est plus simple d’utilisation que sbire_master (à qui il faut passer tous les paramètres de connexion).
 
 
 Les rôles de sbire sont 
@@ -27,12 +30,14 @@ Ce protocole est facultatif, mais La mise en place de cette sécurité est haute
 Via NRPE SBIRE a été testé sur different agent NRPE , il est fonctionnel sur des version 2.9 ou supérieur. 
 
 Les OS suivants ont été testés (PERL =>5.8)
-* Unix/Linux
-* Aix 5/6
-* HPUX 10/11
-* Solaris 9/10/11
-* Windows 2000/2003/2008/2012 (protocole NRPE de l'agent NSCLIENT)
 
+-  Unix/Linux
+-  Aix 5/6
+-  HPUX 10/11
+-  Solaris 9/10/11
+-  Windows 2000/2003/2008/2012 (protocole NRPE de l'agent NSCLIENT)
+
+- 
 
 
 #Install#
@@ -57,6 +62,8 @@ La partie maitre sera installé par défaut dans notre exemple dans le répertoi
        		├── clientX-linux.lst   <== Liste spécifiques au client X et ses serveurs sous Linux  
        		└── clientY.lst		   <== Liste spécifiques au client Y pour tous ses serveur  
 
+Le fichier de configuration sbire_master.conf contient les informations de configuration d'emplacement de fichier List
+
 
 ##Partie ESCLAVE
 
@@ -66,7 +73,7 @@ La partie maitre sera installé par défaut dans notre exemple dans le répertoi
 2. PERL >= 5.8
 	
 Au préalable vous avez installé correctement l'agent NRPE sur le serveur distant à superviser.
-activez dans le fichier **nrpe.cfg** l'option **dont_blame_nrpe=1** pour accepter le passage des arguments. 
+activez dans le fichier **nrpe.cfg** l'option **dontblame_nrpe=1** pour accepter le passage des arguments. 
 
 **sbire.pl** doit etre copié sur le serveur à superviser . 
 Vous devriez le placer dans le repertoire  contenant les plugins de supervisions. (Dans notre exemple /usr/nagios/libexec/.)
@@ -200,20 +207,52 @@ Copie le fichier local (-f) vers le fichier distant (-n)
 
    
 ## OPTIONS : -c run ##
+Cette option vous permettra d'exectuer une commande sur le serveur superviser et d'obtenir le retour de celle-ci.
+Les commandes sont exécutées a paartir de l'utilisateur avec lequel l'agent est installé . 
+
+Syntaxe:  
 
     ./sb_sergeant.pl SERVER -c run -- commande
 
-Exécute une commande à distance (--)
-
-./sb_sergeant.pl SERVER -c config -- "PARAM XX"
 
 Change la valeur d’une option dans le fichier de configuration distant sbire.conf
 
-## OPTIONS : -c options ##
+## OPTIONS : -c config ##
 
-    ./sb_sergeant.pl SERVER -c options
+Voici une option qui vous permettra de modifier des parametres de supervision a distance et de les afficher. 
+Dans un premier temps il permet la configuration des parametres de sbire, mais il peut également modifier/ajouter des options a des fichiers de configurations externe.
 
-Affiche la liste des paramètres distants
+
+Afficher la liste des paramètres distants de Sbire
+
+    ./sb_sergeant.pl SERVER -c config
+
+Afficher la liste des paramètres distants d'autres fichier
+
+    ./sb_sergeant.pl SERVER -c config -n etc/nrpe.cfg 
+    -------------------------------------------
+    | SERVER (192.168.0.1)                   |
+    -------------------------------------------
+    Cannot read an alternate config file (yet)...
+
+Modifier les parametre du fichier de Sbire 
+
+    ./sb_sergeant.pl SERVER -c config **-- "PARAM 0/1"** 
+    -------------------------------------------
+    | SERVER (192.168.0.1)                   |
+    -------------------------------------------
+    ..OK
+
+
+ Modifier les parametre d'un autre Fichier. 
+
+
+    ./sb_sergeant.pl SERVER -c config **-n nsclient.ini --"PARAM 0/1"**
+    -------------------------------------------
+    | SERVER (192.168.0.1)                   |
+    -------------------------------------------
+    ..OK
+
 
 
 
@@ -438,7 +477,66 @@ La Version de l'agent doit etre auminimum pour NRPE egale ou supérieur a 2.9 . 
     
      ./sb_sergeant.pl SERVER -c config -- OUTPUT_LIMIT 640
 
- 
+
+Afficher la liste des paramètres distants de Sbire
+
+    ./sb_sergeant.pl SERVER -c config
+
+Afficher la liste des paramètres distants d'autres fichier
+
+    ./sb_sergeant.pl SERVER -c config -n etc/nrpe.cfg 
+    -------------------------------------------
+    | SERVER (192.168.0.1)                   |
+    -------------------------------------------
+    Cannot read an alternate config file (yet)...
+
+Modifier les parametre du fichier de Sbire 
+
+    ./sb_sergeant.pl SERVER -c config **-- "PARAM 0/1"** 
+    -------------------------------------------
+    | SERVER (192.168.0.1)                   |
+    -------------------------------------------
+    ..OK
+
+
+ Modifier les parametre d'un autre Fichier. 
+
+
+    ./sb_sergeant.pl SERVER -c config **-n nsclient.ini --"PARAM 0/1"**
+    -------------------------------------------
+    | SERVER (192.168.0.1)                   |
+    -------------------------------------------
+    ..OK
+
 
  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
