@@ -4,7 +4,7 @@
 #
 # sbire_master.pl
 #
-# Version 0.9.11
+# Version 0.9.12
 #
 # Historique : 0.9.1 :  First public revision
 #              0.9.2 :  Improved configuration file
@@ -19,15 +19,15 @@
 #              0.9.8 :  Added NRPE command
 #              0.9.9 :  Added NRPE attributes
 #              0.9.10:  Added the optional -d <dir> argument to run command
-#              0.9.10:  fix : command lines may now contain "--"
+#              0.9.11:  fix : command lines may now contain "--"
+#              0.9.12:  Removed 'options' and improved 'config' (added -n option)
 # 
 # NRPE plugins update/manage master script
 #
 # Usage : sbire_master.pl -H <IP> -P LOCAL|NRPE|SSH -c upload -n <name> -f <file> [ -v 1 ]
 #         sbire_master.pl -H <IP> -P LOCAL|NRPE|SSH -c download -n <name> -f <file>
 #         sbire_master.pl -H <IP> -P LOCAL|NRPE|SSH -c run [-d <dir>] -- <cmdline>
-#         sbire_master.pl -H <IP> -P LOCAL|NRPE|SSH -c config -- <OPTION> <value>
-#         sbire_master.pl -H <IP> -P LOCAL|NRPE|SSH -c options
+#         sbire_master.pl -H <IP> -P LOCAL|NRPE|SSH -c config [-n <config_file_name>] [-- <OPTION> <value>]
 #         sbire_master.pl -H <IP> -P LOCAL|NRPE|SSH -c info -n <name>
 #         sbire_master.pl -H <IP> -P LOCAL|NRPE|SSH -c restart
 #         sbire_master.pl -H <IP> -P NRPE           -c nrpe [ -n <name> ] [ -- <ATTRIBUTES> ]
@@ -112,9 +112,7 @@ if ($command eq 'upload') {
 } elsif ($command eq 'download') {
 	&download($file,$name,$verbose);
 } elsif ($command eq 'config') {
-	&config($cmdline);
-} elsif ($command eq 'options') {
-	&options();
+	&config($name,$cmdline);
 } elsif ($command eq 'run') {
 	&run($cmdline,$dir);
 } else {
@@ -125,8 +123,7 @@ sub usage {
 	print "Usage : sbire_master.pl -H <IP> -P LOCAL|NRPE|SSH -c upload -n <name> -f <file>";
 	print "        sbire_master.pl -H <IP> -P LOCAL|NRPE|SSH -c download -n <name> [-f <file>]";
 	print "        sbire_master.pl -H <IP> -P LOCAL|NRPE|SSH -c run [-d <dir>] -- <cmdline>";
-	print "        sbire_master.pl -H <IP> -P LOCAL|NRPE|SSH -c config -- <OPTION> <value>";
-	print "        sbire_master.pl -H <IP> -P LOCAL|NRPE|SSH -c options";
+	print "        sbire_master.pl -H <IP> -P LOCAL|NRPE|SSH -c config [-n <config_file_name>] [-- <OPTION> <value>]";
 	print "        sbire_master.pl -H <IP> -P LOCAL|NRPE|SSH -c info -n <name>";
 	print "        sbire_master.pl -H <IP> -P LOCAL|NRPE|SSH -c restart";
 	print "        sbire_master.pl -H <IP> -P NRPE           -c nrpe [ -n <name> ] [ -- <parameters> ]";
@@ -156,12 +153,9 @@ sub nrpe {
 }
 
 sub config {
-	my ($name)=@_;
-	print &call_sbire("config $name");
-}
-
-sub options {
-	print &call_sbire("options");
+	my ($name,$cmdline)=@_;
+	$name='-' unless $name;
+	print &call_sbire("config $name $cmdline");
 }
 
 sub restart {	
