@@ -46,16 +46,16 @@ Les OS suivants ont été testés (PERL =>5.8)
 	
 La partie maitre sera installé par défaut dans notre exemple dans le répertoire /usr/local/Sbire. 
 
-├── sbire_master.pl  
-├── sbire_rsa_keygen.pl  
-├── sb_sergeant.pl  
-└── etc  
-	    ├── sbire_master.conf   <== Parametre sbire_master.pl   
-	├── sb_sergeant.cfg     <== Parametre sb_sergeant.pl   
-	├── server_list.txt     <== Definition de tous les hosts géré par sbire   
-	├── clientX-windows.lst <== Liste spécifiques au client X et ses serveurs sous Windows  
-	├── clientX-linux.lst   <== Liste spécifiques au client X et ses serveurs sous Linux  
-	└── clientY.lst		   <== Liste spécifiques au client Y pour tous ses serveur  
+├─ sbire_master.pl  
+├─ sbire_rsa_keygen.pl  
+├─ sb_sergeant.pl  
+└─ etc  
+   '	'	├── sbire_master.conf   <== Parametre sbire_master.pl   
+   '	'	├── sb_sergeant.cfg     <== Parametre sb_sergeant.pl   
+   '	'	├── server_list.txt     <== Definition de tous les hosts géré par sbire   
+   '	'	├── clientX-windows.lst <== Liste spécifiques au client X et ses serveurs sous Windows  
+   '	'	├── clientX-linux.lst   <== Liste spécifiques au client X et ses serveurs sous Linux  
+   '	'	└── clientY.lst		   <== Liste spécifiques au client Y pour tous ses serveur  
 
 
 
@@ -310,35 +310,32 @@ Le répertoire où sont stockés les versions successives des fichiers uploadés
 Le répertoire qui sert de base aux chemins relatifs.
 
 
-3. FAQ : Erreurs connues et résolutions
+# FAQ : Erreurs connues et résolutions
 
-Message d’erreur :
+_Message d’erreur :_
 
     Security Error : cannot use this command without RSA security enabled
 
-Explication :
+_Explication :_ 
 
 Pour des raisons de sécurité, sbire refuse de lancer une commande sans que l'authentification RSA soit activée entre le maitre et l'esclave.
 
-Résolution :
+_Résolution :_
 
 Il suffit d’activer le protocole RSA (config USE_RSA 1) ou de permettre l’utilisation d’une commande sans RSA (sbire version 0.9.15 ou plus : config ENABLE_UNSECURE_COMMAND 1)
 
-[root@POLLER   sbire-master]# ./sb_sergeant.pl SERVEUR -c config -e "USE_RSA 1"
-
----------------------------
-
-| SERVEUR1 (192.168.0.1) |
-
----------------------------
-
-OK
+    [root@POLLER   sbire-master]# ./sb_sergeant.pl SERVEUR -c config -e "USE_RSA 1"
+    
+    ---------------------------  
+    | SERVEUR1 (192.168.0.1) |  
+    ---------------------------
+    OK
 
  
 
  
 
-Message d’erreur :
+_Message d’erreur :_
 
     Configuration is locked
 
