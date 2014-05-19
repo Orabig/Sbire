@@ -309,15 +309,15 @@ Le répertoire qui sert de base aux chemins relatifs.
 
 # FAQ : Erreurs connues et résolutions
 
-_Message d’erreur :_
+#####Message d’erreur :
 
     Security Error : cannot use this command without RSA security enabled
 
-_Explication :_ 
+#####Explication : 
 
 Pour des raisons de sécurité, sbire refuse de lancer une commande sans que l'authentification RSA soit activée entre le maitre et l'esclave.
 
-_Résolution :_
+#####Résolution :
 
 Il suffit d’activer le protocole RSA (config USE_RSA 1) ou de permettre l’utilisation d’une commande sans RSA (sbire version 0.9.15 ou plus : config ENABLE_UNSECURE_COMMAND 1)
 
@@ -336,30 +336,30 @@ Il suffit d’activer le protocole RSA (config USE_RSA 1) ou de permettre l’ut
 
  
 
-*Message d’erreur :*
+#####Message d’erreur :
 
     Configuration is locked
 
-Explication :
+#####Explication :
 
 Soit la configuration a été "lockée" sur l'esclave, soit sbire a été déployé sans fichier de configuration, et donc la configuration est LOCKED par défaut. Dans tous les cas, la configuration ne peut plus être modifiée par le maitre.
 
  
-Résolution :
+#####Résolution :
 
 Se connecter manuellement à l'esclave, et modifier le fichier de configuration pour ajouter CONFIG_LOCKED = 0
 
  
 
-Message d’erreur :
+#####Message d’erreur :
 
 Crypt::RSA not present
 
-Explication :
+#####Explication :
 
 Le module perl Crypt ::RSA n'est pas présent sur le serveur
 
-Résolution :
+#####Résolution :
 
 Il est possible de remplacer ce module (difficile à installer) par le programme GNU dc (ou bc sur Windows), qui permettra de calculer le cryptage par clé RSA. Pour cela, il faut activer l'option USE_RSA_DC_BASED_IMPLEMENTATION :
 
@@ -373,37 +373,40 @@ Il est possible de remplacer ce module (difficile à installer) par le programme
     
     OK
 
- 
-
- 
-
-
 ----------
 
 
-Message d’erreur :
+#####Message d’erreur :
 
     Public key file is empty or missing
 
-Explication :
+#####Explication :
 
     La clé publique n'a pas été déposée sur le serveur distant
 
-Résolution :
+#####Résolution :
 
     Déposer la clé avec la commande :
     
-    (TODO : rédiger la procédure)
-    
-    Il est aussi possible de désactiver tout simplement la sécurité RSA.
-    
     # ./sb_sergeant.pl SERVEUR -c config -e "USE_RSA 0"
+    # ./sb_sergeant.pl SERVEUR -c upload -f /path_to_pubkey/sbire_key.pub -n sbire_key.pub
+    # ./sb_sergeant.pl SERVEUR -c config -e "USE_RSA 1"
     
-    ---------------------------  
-    | SERVEUR (192.168.0.1)   |  
-     -------------------------  
+
+----------
+
+
+#####Message d’erreur :
+
+The command (…) returned an invalid return code: 255
     
-    OK
+#####Explication :
+    
+Le fichier distant sbire.pl est corrompu, endommagé ou manquant.
+
+#####Résolution :
+
+Il faut se connecter manuellement au serveur, et réparer le fichier ou relancer l'installation. Merci de sauvegarder l'historique des commandes envoyées à ce serveur, afin de trouver l'origine du problème en vue d'une correction.
 
  
 
@@ -411,63 +414,10 @@ Résolution :
 ----------
 
 
-Message d’erreur :
 
-    The command (…) returned an invalid return code: 255
-    
-   Explication :
-    
-    Le fichier distant sbire.pl est corrompu, endommagé ou manquant.
+#####Message d’erreur :
 
-Résolution :
-
-    Il faut se connecter manuellement au serveur, et réparer le fichier ou relancer l'installation. Merci de sauvegarder l'historique des commandes envoyées à ce serveur, afin de trouver l'origine du problème en vue d'une correction.
-
- 
-
-
-----------
-
-
-Message d’erreur :
-
-    Configuration error : PLUGINSDIR (C:/NSCP64/sbire_temp) does not exist or is not writable
-
-Explication :
-
-    La configuration de sbire coté serveur est incorrecte. Il peut s’agir d’un fichier de configuration 64 bits qui a été déployé sur une installation 32 bits
-
-Résolution :
-
-    Il faut se connecter manuellement au serveur, et réparer le fichier ou relancer l'installation. La version 0.9.16 de sbire devrait normalement corriger ce message d’erreur si le cas venait à se reproduire.
-
- 
-
-
-----------
-
-
-Message d’erreur :
-
-    Can't locate Config/Simple.pm in @INC (…)
-
-Explication :
-
-    Les scripts (coté client) de sbire ont été installés, mais il manque la bibliothèque Perl Config::Simple.
-
-Résolution :
-
-    Mettre à jour sb_sergeant dans la version 0.9.6 minimum, qui n’utilise plus cette dépendance
-
- 
-
-
-----------
-
-
-Message d’erreur :
-
-    Résultat d'un commande ressemble à
+Résultat d'un commande ressemble à
     
         ---------------------------  
         | SERVEUR (192.168.0.1)   |  
@@ -478,13 +428,13 @@ Message d’erreur :
     
 
 
-Explication :
+#####Explication :
 
-    La taille du "packet" d'échange avec sbire est trop grand par rapport à la configuration NRPE. Le packet encodé en Base64 ne se décode donc pas correctement.
+La taille du "packet" d'échange avec sbire est trop grand par rapport à la configuration NRPE. Le packet encodé en Base64 ne se décode donc pas correctement.
 
-Résolution :
+#####Résolution :
 
-    La Version de l'agent doit etre auminimum pour NRPE egale ou supérieur a 2.9 . Les agent 2.5 ne fonctionnentpas . Pour Windows  il suffit de Baisser la valeur de l’option OUTPUT_LIMIT (positionnée à 1024 sur certains serveurs, ce qui est trop haut pour l’implémentation dans NSclient++ du protocole NRPE)
+La Version de l'agent doit etre auminimum pour NRPE egale ou supérieur a 2.9 . Les agent 2.5 ne fonctionnentpas . Pour Windows  il suffit de Baisser la valeur de l’option OUTPUT_LIMIT (positionnée à 1024 sur certains serveurs, ce qui est trop haut pour l’implémentation dans NSclient++ du protocole NRPE)
     
      ./sb_sergeant.pl SERVER -c config -- OUTPUT_LIMIT 640
 
