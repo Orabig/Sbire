@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-my $Version= 'Version 0.9.24';
+my $Version= 'Version 0.9.25';
 
 ####################
 #
@@ -17,11 +17,12 @@ my $Version= 'Version 0.9.24';
 #           0.9.21 : Shows OS with version
 #           0.9.22 : Fix archive error when user do not have access to the upload folder
 #           0.9.23 : Run command now accepts an optional basedir
-#           0.9.24 : removed 'options'. 'config' can now work on alternate config files
+#           0.9.24 : Added --direct option
+#           0.9.25 : removed 'options'. 'config' can now work on alternate config files
 #
 # Usage :
 #
-#    sbire.pl <CFG> 
+#    sbire.pl <CFG>
 #		Returns version of the current script, as well as the actual configuration of its protocol
 #       (NO_RSA / RSA & publickey, input limit, output limit)
 #
@@ -58,6 +59,9 @@ my $Version= 'Version 0.9.24';
 #       defined in a "channel" list for orders documents, that have the following structure : {"ID":"<int>", 
 #       "type":"<transfert|exec|info>", "fle":"<base64_encrypted_content>", "name":"<filename>"}
 #
+#    The <CFG> part may be replaced by --direct, when sbire is invoked locally. In this case, the output is readable (not converted into base64)
+#    and no configuration files is needed nor used.
+#
 ####################
 
  use MIME::Base64;
@@ -83,22 +87,27 @@ my $Version= 'Version 0.9.24';
  our ($SERVICE);
  my $CONF = shift(@ARGV);
  
- unless (defined $CONF) {
-	print "sbire.pl $Version\n";
-	print "Usage : sbire.pl <config_file> [commands...]\n";
-	exit(1);
-	}
+ my $DIRECT_OUTPUT;
+ if ($CONF=~/--direct/i) {
+	$DIRECT_OUTPUT=1;
+	} else {
+	 
+	unless (defined $CONF) {
+		print "sbire.pl $Version\n";
+		print "Usage : sbire.pl <config_file> [commands...]\n";
+		exit(1);
+		}
+	 
+	unless (-e $CONF) {
+		print "Configuration file missing. Init with default values";
+		open CF, ">$CONF" || &error("Cannot write $CONF");
+		print CF <<__EOF__;
+# sbire.pl configuration file.
+OUTPUT_LIMIT = 1024
  
- unless (-e $CONF) {
-	print "Configuration file missing. Init with default values";
-	open CF, ">$CONF" || &error("Cannot write $CONF");
-	print CF <<__EOF__;
- # sbire.pl configuration file.
- OUTPUT_LIMIT = 1024
- 
- SESSIONDIR = /tmp/sbire
- ARCHIVEDIR = /var/nagios/archive
- BASEDIR = /usr/local/nagios
+SESSIONDIR = /tmp/sbire
+ARCHIVEDIR = /var/nagios/archive
+BASEDIR = /usr/local/nagios
  
 ####################################################
 #
@@ -124,19 +133,19 @@ my $Version= 'Version 0.9.24';
 # PUBLIC_KEY = /usr/local/nagios/bin/sbire_key.pub
 
 __EOF__
-	close CF;
-	&error("Cannot write $CONF") unless (-e $CONF);
+		close CF;
+		&error("Canot write $CONF") unless (-e $CONF);
+		}
+
+	 &readConfig($CONF);
+	 mkpath($SESSIONDIR) unless (-d $SESSIONDIR);
+	 mkpath($ARCHIVEDIR) unless (-d $ARCHIVEDIR);
+	 mkpath($BASEDIR) unless (-d $BASEDIR);
+
+	# Configuration check
+	&error("Configuration error : SESSIONDIR ($SESSIONDIR) does not exist or is not writable") unless (-w $SESSIONDIR);
+	&error("Configuration error : ARCHIVEDIR ($ARCHIVEDIR) does not exist or is not writable") unless (-w $ARCHIVEDIR);
 	}
-
- &readConfig($CONF);
- mkpath($SESSIONDIR) unless (-d $SESSIONDIR);
- mkpath($ARCHIVEDIR) unless (-d $ARCHIVEDIR);
- mkpath($BASEDIR) unless (-d $BASEDIR);
-
-# Configuration check
-&error("Configuration error : SESSIONDIR ($SESSIONDIR) does not exist or is not writable") unless (-w $SESSIONDIR);
-&error("Configuration error : ARCHIVEDIR ($ARCHIVEDIR) does not exist or is not writable") unless (-w $ARCHIVEDIR);
-
  my $COMMAND = shift(@ARGV);
 
 
@@ -468,7 +477,7 @@ sub info {
 	$plugin=$PUBLIC_KEY if ($name eq 'PUBLIC_KEY');
 	$plugin.="/*" if (-d $plugin);
 	unless (-f $plugin || $plugin=~/\*/) {
-		&error ("$name does not exist in the plugin folder ($PATH)");
+		&error ("$name does not exist.");
 		}
 	my @FILES = glob($plugin);
 	my $multiple = @FILES>1;
@@ -555,6 +564,10 @@ sub newChunkId() {
  
  sub output() {
 	my ($msg)=@_;
+	if ($DIRECT_OUTPUT) {
+		print $msg;
+		exit(0);
+	}
 	my $POSTFIX = "___Cont:0000000___";
 	if (length($msg) >= $OUTPUT_LIMIT) {
 		my $ID = &newChunkId();
