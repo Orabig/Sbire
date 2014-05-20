@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-my $Version= 'Version 0.9.25';
+my $Version= 'Version 0.9.26';
 
 ####################
 #
@@ -19,6 +19,7 @@ my $Version= 'Version 0.9.25';
 #           0.9.23 : Run command now accepts an optional basedir
 #           0.9.24 : Added --direct option
 #           0.9.25 : removed 'options'. 'config' can now work on alternate config files
+#           0.9.26 : Improved config file update
 #
 # Usage :
 #
@@ -401,18 +402,32 @@ sub config {
 		$_=<CF>;
 	}
 	close CF;
-	if (s/^(\s*$VARIABLE\s*=).*/$1 @VALUES/m) {
-		open CF, ">$CONF" or &error("Cannot open $CONF : $!");
-		print CF;
-		close CF;
-		return "OK";
+	
+	my $remove = $VARIABLE=~s/^-//;
+	
+	my $ESCAPED_VARIABLE_REGEXP=$VARIABLE;
+	$ESCAPED_VARIABLE_REGEXP=~s/[\[\]\-\+\*\.\(\)\$\@\%\\]/\\$&/g;
+
+	my $result;
+	
+	if ($remove) {
+		# Remove the variable from the config file
+		$result = s/^([ \t]*$ESCAPED_VARIABLE_REGEXP[ \t]*=[ \t]*)(.*?)[ \t]*(\n|$)//m ? "OK (old value '$2' was removed)": 'NOT FOUND';
+	} else {
+		# Update the variable
+		if (s/^([ \t]*$ESCAPED_VARIABLE_REGEXP[ \t]*=[ \t]*)(.*?)[ \t]*$/$1@VALUES/m) {
+			$result = "OK (changed from '$2' to '@VALUES')";
+		} else {
+		# Add the variable
+		$_.="\n$VARIABLE=@VALUES";
+			$result = "OK (added '@VALUES')";
+		}
 	}
 
-	#Add the new variable value
-	open CF, ">>$CONF" or &error("Cannot open $CONF : $!");
-	print CF "$VARIABLE=@VALUES\n";
+	open CF, ">$CONF" or &error("Cannot open $CONF : $!");
+	print CF;
 	close CF;
-	return "OK";
+	return $result;
  }
  
  sub readConfig {

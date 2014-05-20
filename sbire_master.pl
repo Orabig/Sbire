@@ -4,7 +4,7 @@
 #
 # sbire_master.pl
 #
-# Version 0.9.12
+# Version 0.9.13
 #
 # Historique : 0.9.1 :  First public revision
 #              0.9.2 :  Improved configuration file
@@ -21,6 +21,7 @@
 #              0.9.10:  Added the optional -d <dir> argument to run command
 #              0.9.11:  fix : command lines may now contain "--"
 #              0.9.12:  Removed 'options' and improved 'config' (added -n option)
+#              0.9.13:  Improve the meta-caracters handling (NRPE forbidden chars)
 # 
 # NRPE plugins update/manage master script
 #
@@ -93,8 +94,9 @@ my ($help,$verbose);
 &usage() if defined $help;
 
 # transforme les caracteres interdits pour NRPE en meta-caractere
-$name   =~s/[\%\\\&\|\'\"\{\}\;]/'%'.sprintf("%x",ord $&)/ge;
-$cmdline=~s/[\%\\\&\|\'\"\{\}\;]/'%'.sprintf("%x",ord $&)/ge;
+$name   =~s/[^\w ]/'%'.sprintf("%x",ord $&)/ge;
+$cmdline=~s/[^\w ]/'%'.sprintf("%x",ord $&)/ge;
+$dir    =~s/[^\w ]/'%'.sprintf("%x",ord $&)/ge;
 
 unless (defined $command) {
 	print &call_sbire(' ');
