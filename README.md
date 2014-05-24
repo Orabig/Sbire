@@ -6,6 +6,101 @@ Introduction
 
 Sbire is a set of scripts whose aim is to help deploy, modify and maintain remote NRPE scripts.
 
+Sbire at a glance
+-----------------
+
+(History : Sbire-server has been installed and setup on a Linux machine called `master`. Nrpe and Sbire-client has been installed on several Linux and Windows servers, called `Venus`, `Mars`, `Saturn`, `Neptun` and so on...)
+
+    # This command will "connect" to all the known remote servers
+    
+    user@master:~$ connect all
+    VENUS    sbire.pl Version 0.9.26   (linux, RSA:pub=)
+    MARS     sbire.pl Version 0.9.26   (linux, RSA:pub=)
+    SATURN   sbire.pl Version 0.9.26   (Win32, RSA:pub=)
+    ...
+
+    # This will ask for the version of a NRPE check
+
+    user@master:~$ c info -n my_nagios_plugin.pl --csv
+    VENUS    my_nagios_plugin.pl    70426 bytes     Version 1.2    Signature : dbb3e5d3ca5c21788f9bb1e47e409fcc
+    MARS     my_nagios_plugin.pl    72340 bytes     Version 1.3    Signature : 0cc45e8ec072b0187c5b7dad0761d3d9
+    SATURN   my_nagios_plugin.pl    70426 bytes     Version 1.2    Signature : dbb3e5d3ca5c21788f9bb1e47e409fcc
+
+    # Ok, the plugin seems more recent on MARS, lets take it locally...
+    
+    user@master:~$ connect MARS
+    MARS     sbire.pl Version 0.9.26   (linux, RSA:pub=)
+    user@master:~$ c download -n my_nagios_plugin.pl > /tmp/my_nagios_plugin.pl
+    
+    # ... then push it to the other servers.
+  
+    user@master:~$ connect all
+    (...)
+    user@master:~$ c upload --csv -n my_nagios_plugin.pl -f /tmp/my_nagios_plugin.pl
+    VENUS   OK. 72340 bytes uploaded.
+    MARS    Skipped. Files are identical
+    SATURN  OK. 72340 bytes uploaded.
+    (...)
+    
+    # By the way, would you be able to run a command on several server at once ?
+    
+    user@master:~$ r ls -l
+    VENUS  total 8
+    VENUS  -rwxrwsr-x 2 nagios nagios 72340 May 19 10:30 my_nagios_plugin.pl
+    VENUS  -rwxrwsr-x 2 nagios nagios 12668 May 12 11:02 check_fs.pl
+    VENUS  -rwxrwsr-x 2 nagios nagios 14611 May 11 11:35 check_disk.pl
+    VENUS  -rwxrwsr-x 2 nagios nagios 24587 May 15 16:48 sbire.pl
+    MARS   total 8
+    MARS   -rwxrwsr-x 2 nagios nagios 72340 May 19 10:20 my_nagios_plugin.pl
+    MARS   -rwxrwsr-x 2 nagios nagios 12668 May 19 10:20 check_fs.pl
+    MARS   -rwxrwsr-x 2 nagios nagios 14655 May 19 10:22 check_disk.pl
+    MARS   -rwxrwsr-x 2 nagios nagios 24587 May 16 10:22 sbire.pl
+    (...)
+    
+    # Or launch an NRPE script for testing ?
+    
+    user@master:~$ r nrpe -a check_disk -- -n /tmp
+    -----------------------
+    | VENUS (12.34.56.78) |
+    -----------------------
+    OK | /tmp=62%,80,90
+  
+    ----------------------
+    | MARS (12.34.56.79) |
+    ----------------------
+    OK | /tmp=35%,80,90
+    
+    (...)
+
+    # Or even modify your NRPE configuration file ...
+    
+    user@master:~$ c config -n /etc/nagios/nrpe.cfg -- 'command[new_check] /usr/bin/perl my_new_check.pl \$ARG1\$'
+    -----------------------
+    | VENUS (12.34.56.78) |
+    -----------------------
+    OK (Added '/usr/bin/perl my_new_check.pl $ARG1$')
+  
+    ----------------------
+    | MARS (12.34.56.79) |
+    ----------------------
+    OK (Added '/usr/bin/perl my_new_check.pl $ARG1$')
+    
+    (...)
+    
+    # ... upload the check script ...
+    
+    user@master:~$ c upload -n my_new_check.pl -f ./DEV/new_script/my_new_check.pl
+    (...)
+    
+    # ... And finally restart the NRPE service ?
+
+    user@master:~$ r sudo /etc/init.d/nagios-nrpe-service restart
+    (...)
+    
+    # Did you notice you just deployed a brand new check on several servers with only 3 command lines ?
+    
+    
+
 Presentation
 ------------
 
