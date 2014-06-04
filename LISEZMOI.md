@@ -360,7 +360,7 @@ Pour des raisons de sécurité, sbire refuse de lancer une commande sans que l'a
 
 Il suffit d’activer le protocole RSA (config USE_RSA 1) ou de permettre l’utilisation d’une commande sans RSA (sbire version 0.9.15 ou plus : config ENABLE_UNSECURE_COMMAND 1)
 
-    [root@POLLER   sbire-master]# ./sb_sergeant.pl SERVEUR -c config -e "USE_RSA 1"
+    [root@POLLER   sbire-master]# ./sb_sergeant.pl SERVEUR -c config -- "USE_RSA 1"
     
     ---------------------------  
     | SERVEUR1 (192.168.0.1) |  
@@ -404,7 +404,7 @@ Il est possible de remplacer ce module (difficile à installer) par le programme
 
  
 
-        ./sb_sergeant.pl SERVEUR -c config -e "USE_RSA_DC_BASED_IMPLEMENTATION 1"
+        ./sb_sergeant.pl SERVEUR -c config -- "USE_RSA_DC_BASED_IMPLEMENTATION 1"
     
     ---------------------------  
     | SERVEUR (192.168.0.1)   |  
@@ -427,9 +427,9 @@ Il est possible de remplacer ce module (difficile à installer) par le programme
 
     Déposer la clé avec la commande :
     
-    # ./sb_sergeant.pl SERVEUR -c config -e "USE_RSA 0"
+    # ./sb_sergeant.pl SERVEUR -c config -- "USE_RSA 0"
     # ./sb_sergeant.pl SERVEUR -c upload -f /path_to_pubkey/sbire_key.pub -n sbire_key.pub
-    # ./sb_sergeant.pl SERVEUR -c config -e "USE_RSA 1"
+    # ./sb_sergeant.pl SERVEUR -c config -- "USE_RSA 1"
     
 
 ----------
