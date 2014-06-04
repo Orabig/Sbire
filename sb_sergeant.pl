@@ -211,9 +211,13 @@ sub process() {
 		return;
 		}
 	if ($CSV && ! $LOCAL) {
-		# En sortie CSV, on prefixe toutes les lignes par le nom du serveur son adresse IP et le protocole
+		# With CSV output, each line must be prefixed by the server's name
 		$output="\n" if $output eq '';
-		$output=~s/^/$alias\t/gm;
+		my $len=length $alias;
+		my $max = 20; # TODO : Could change 20 with the largest width
+		$len=$max if $len>$max;
+		my $prefix = $alias . ' ' x (20 - $len); 
+		$output=~s/^/$prefix/gm;
 	}
 	print $output;
 }
