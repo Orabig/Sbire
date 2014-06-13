@@ -10,8 +10,9 @@ How to install Sbire
 --------------------
 
 * Make sure that NRPE is up and running
+* login as root
 * type the following :
 
-    curl -sSL http://shar.as/8eVYJ | bash
+> curl -sSL http://shar.as/8eVYJ | bash
 
 * enjoy...
