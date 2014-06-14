@@ -13,6 +13,6 @@ How to install Sbire (client-side)
 * login as root
 * type the following :
 
-> curl -sSL http://shar.as/8eVYJ | bash
+> curl -sSL sbi.re/install | bash
 
 * enjoy...
