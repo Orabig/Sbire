@@ -110,7 +110,7 @@ NRPE plugin must be present on server-side. To install check_nrpe plugin, there 
 
 To install sbire_master (which is the server-side of sbire), just type
 
-    curl_sSL sbi.re/install_server | sudo bash
+    curl -sSL sbi.re/install_server | sudo bash
 
 
 
@@ -133,43 +133,6 @@ Atm, there are 3 scripts :
 
   It's an utility which generates a couple of private/public keys, which can be used when RSA security-based
   transfert protocol are activated between `sbire.pl` and `sbire_master.pl`.
-
-Install
--------
-
-### Remote NRPE server install
-
-This procedure assumes that NRPE daemon/service is installed and running on the remote server. You can check it by running
-`check_nrpe -H <IP>` on the master server. This command should be able to connect to the NRPE server (on the given `<IP>` adress) which will print the NRPE version.
-
-1. sbire.pl must be copied on the remote server. You should put it in a directory which will contain the plugin scripts. (Here,
-   it will be `/opt/nagios/libexec/`.)
-
-2. Edit `nrpe.cfg` file and add following line (adjust the paths) :
-
-   > command[sbire]=/opt/nagios/libexec/sbire.pl /opt/nagios/etc/sbire.conf $ARG1$ $ARG2$ $ARG3$ $ARG4$ $ARG5$ 2>&1
-
-   You can also add the following line :
-
-   > include=/opt/nagios/libexec/local.nrpe.cfg
-
-   Which will define a local configuration file that you will use to add new plugins.
-
-3. Create the configuration file (given on the command line above)
-
-   > # /opt/nagios/etc/sbire.conf :
-   > 
-   > (...)
-
-4. (If the remote server is Linux) : Type the following line :
-
-   > echo "nagios ALL = NOPASSWD: `which service`" >>/etc/sudoers
-
-   which will allow the `nagios` user to restart the NRPE service (which will be very helpful)
-
-5. Restart the NRPE server.
-
-   > sudo service nrpe restart
 
 Usage
 -----
