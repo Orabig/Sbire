@@ -155,9 +155,12 @@ if ($SPLIT) {
 		my $splitname="$SPLIT-$count";
 		my @aliases = @{ $SPLITTER{$key} };
 		# Generate the output
+		{ 
+		local $\;undef $\;
 		open OUTPUT, ">$splitname.out";
 		print OUTPUT $key;
 		close OUTPUT;
+		}
 		# Generate the listfile
 		open LIST, ">$splitname.lst";
 		print LIST join $/,@aliases;
