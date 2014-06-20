@@ -4,7 +4,7 @@
 #
 # sbire_master.pl
 #
-# Version 0.9.12
+# Version 0.9.13
 #
 # Historique : 0.9.1 :  First public revision
 #              0.9.2 :  Improved configuration file
@@ -30,7 +30,6 @@
 #         sbire_master.pl -H <IP> -P LOCAL|NRPE|SSH -c run [-d <dir>] -- <cmdline>
 #         sbire_master.pl -H <IP> -P LOCAL|NRPE|SSH -c config [-n <config_file_name>] [-- <OPTION> <value>]
 #         sbire_master.pl -H <IP> -P LOCAL|NRPE|SSH -c info -n <name>
-#         sbire_master.pl -H <IP> -P LOCAL|NRPE|SSH -c restart
 #         sbire_master.pl -H <IP> -P NRPE           -c nrpe [ -n <name> ] [ -- <ATTRIBUTES> ]
 # 
 ####################
@@ -104,8 +103,6 @@ unless (defined $command) {
 
 if ($command eq 'upload') {
 	&upload($file,$name,$verbose);
-} elsif ($command eq 'restart') {
-	&restart();
 } elsif ($command eq 'info') {
 	&info($name);
 } elsif ($command eq 'nrpe') {
@@ -126,7 +123,6 @@ sub usage {
 	print "        sbire_master.pl -H <IP> -P LOCAL|NRPE|SSH -c run [-d <dir>] -- <cmdline>";
 	print "        sbire_master.pl -H <IP> -P LOCAL|NRPE|SSH -c config [-n <config_file_name>] [-- <OPTION> <value>]";
 	print "        sbire_master.pl -H <IP> -P LOCAL|NRPE|SSH -c info -n <name>";
-	print "        sbire_master.pl -H <IP> -P LOCAL|NRPE|SSH -c restart";
 	print "        sbire_master.pl -H <IP> -P NRPE           -c nrpe [ -n <name> ] [ -- <parameters> ]";
 }
 sub error {
@@ -158,23 +154,6 @@ sub config {
 	$name='-' unless $name;
 	print &call_sbire("config $name $cmdline");
 }
-
-sub restart {	
-	$_ = &call_sbire("restart",1);
-	if (/Received 0 bytes from daemon/) {
-		# Tout va bien. Le service s'est coupe et n'a pas eu le temps de repondre.
-		print "Service NRPE restart [ OK ]";
-		exit(0);
-		}
-	if (/sudo: no tty present/) {
-		print "You MUST add nagios user in sudoers on distant server. Execute on $dest :";
-		print 'root@'.$dest.'# echo "nagios ALL = NOPASSWD: `which service`" >>/etc/sudoers';
-		exit(1);
-		}
-	print ;
-	exit(1);
-}
-
 
 sub download {
 	my ($file,$name,$verbose)=@_;

@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-my $Version= 'Version 0.9.26';
+my $Version= 'Version 0.9.27';
 
 ####################
 #
@@ -20,6 +20,7 @@ my $Version= 'Version 0.9.26';
 #           0.9.24 : Added --direct option
 #           0.9.25 : removed 'options'. 'config' can now work on alternate config files
 #           0.9.26 : Improved config file update
+#           0.9.27 : Removed 'restart' which is useless
 #
 # Usage :
 #
@@ -182,8 +183,6 @@ sub run_command {
 	{ &output(&download(@ARGS)) }
  elsif ($COMMAND eq 'run') 
 	{ &output(&run(@ARGS)) }
- elsif ($COMMAND eq 'restart') 
-	{ &output(&restart(@ARGS)) }
  elsif ($COMMAND eq 'continue') 
 	{ &output(&contn(@ARGS)) }
  elsif ($COMMAND eq 'config') 
@@ -476,12 +475,6 @@ sub download {
 	$_ = do { local $/; <INF> };
 	close INF;
 	return $_;
-}
- 
-sub restart {
-	my $service=$NRPE_SERVICE_NAME;
-	system("sudo service $service restart > /dev/null &");
-	return "Reloading '$service' service.";
 }
  
 sub info {
