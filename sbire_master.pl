@@ -4,7 +4,7 @@
 #
 # sbire_master.pl
 #
-# Version 0.9.13
+# Version 0.9.14
 #
 # Historique : 0.9.1 :  First public revision
 #              0.9.2 :  Improved configuration file
@@ -22,6 +22,7 @@
 #              0.9.11:  fix : command lines may now contain "--"
 #              0.9.12:  Removed 'options' and improved 'config' (added -n option)
 #              0.9.13:  Improve the meta-caracters handling (NRPE forbidden chars)
+#              0.9.14:  Download do nothing if remote and local files are identical
 # 
 # NRPE plugins update/manage master script
 #
@@ -30,7 +31,6 @@
 #         sbire_master.pl -H <IP> -P LOCAL|NRPE|SSH -c run [-d <dir>] -- <cmdline>
 #         sbire_master.pl -H <IP> -P LOCAL|NRPE|SSH -c config [-n <config_file_name>] [-- <OPTION> <value>]
 #         sbire_master.pl -H <IP> -P LOCAL|NRPE|SSH -c info -n <name>
-#         sbire_master.pl -H <IP> -P LOCAL|NRPE|SSH -c restart
 #         sbire_master.pl -H <IP> -P NRPE           -c nrpe [ -n <name> ] [ -- <ATTRIBUTES> ]
 # 
 ####################
@@ -105,8 +105,6 @@ unless (defined $command) {
 
 if ($command eq 'upload') {
 	&upload($file,$name,$verbose);
-} elsif ($command eq 'restart') {
-	&restart();
 } elsif ($command eq 'info') {
 	&info($name);
 } elsif ($command eq 'nrpe') {
@@ -127,7 +125,6 @@ sub usage {
 	print "        sbire_master.pl -H <IP> -P LOCAL|NRPE|SSH -c run [-d <dir>] -- <cmdline>";
 	print "        sbire_master.pl -H <IP> -P LOCAL|NRPE|SSH -c config [-n <config_file_name>] [-- <OPTION> <value>]";
 	print "        sbire_master.pl -H <IP> -P LOCAL|NRPE|SSH -c info -n <name>";
-	print "        sbire_master.pl -H <IP> -P LOCAL|NRPE|SSH -c restart";
 	print "        sbire_master.pl -H <IP> -P NRPE           -c nrpe [ -n <name> ] [ -- <parameters> ]";
 }
 sub error {
@@ -160,31 +157,19 @@ sub config {
 	print &call_sbire("config $name $cmdline");
 }
 
-sub restart {	
-	$_ = &call_sbire("restart",1);
-	if (/Received 0 bytes from daemon/) {
-		# Tout va bien. Le service s'est coupe et n'a pas eu le temps de repondre.
-		print "Service NRPE restart [ OK ]";
-		exit(0);
-		}
-	if (/sudo: no tty present/) {
-		print "You MUST add nagios user in sudoers on distant server. Execute on $dest :";
-		print 'root@'.$dest.'# echo "nagios ALL = NOPASSWD: `which service`" >>/etc/sudoers';
-		exit(1);
-		}
-	print ;
-	exit(1);
-}
-
-
 sub download {
 	my ($file,$name,$verbose)=@_;
+	if (-f $file) {
+		# The file exists, so we should check if a download is necessary
+		my $localContent=readFileContent($file);
+		exitIfRemoteContentIsIdentical($name, $localContent);
+	}
 	my $content=&call_sbire("download $name");
-	print "Writing file" if ($verbose);
 	unless ($file) {
 		undef $\;
 		print $content;
 	} else {
+		print "Writing file" if ($verbose);
 		open INF, ">$file" or die "\nCan't open $file for writing: $!\n";
 		binmode INF;
 		print INF $content;
@@ -200,22 +185,9 @@ sub upload {
 	
 	# Lecture du fichier
 	print "Reading file" if ($verbose);
-	open INF, $file or die "\nCan't open $file: $!\n";
-	binmode INF;
-	my $content = do { local $/; <INF> };
-	close INF;
+	my $content=readFileContent($file);
 	
-	# Verification de la version du fichier
-	$_ = &call_sbire("info $name",1);
-	my $mymd=md5_hex($content);
-	if (/Signature\W+([\w]+)/) {
-		my $md5=$1;
-		# Verification de notre propre signature
-		if ($md5 eq $mymd) {
-			print "Files are identical. Skip...";
-			exit(0);
-			}
-	}
+	my $mymd=exitIfRemoteContentIsIdentical($name, $content);
 	
 	# Demande d'un nouvel ID de session
 	my $ID = &call_sbire("send newfile");
@@ -266,7 +238,34 @@ sub upload {
 	my $args="update $name $ID $signature";
 	$_=&call_sbire($args);
 	print;
-}		
+}
+
+sub readFileContent() {
+	my ($file)=@_;
+	open INF, $file or die "\nCan't open $file: $!\n";
+	binmode INF;
+	my $content = do { local $/; <INF> };
+	close INF;
+	return $content;
+}
+
+# This sub control if the given content is identical to the remote content (with MD5)
+# It then returns the MD5 of the local content, or exit the program if contents are identical
+sub exitIfRemoteContentIsIdentical() {
+	my ($name, $content)=@_;
+	# Verification de la version du fichier
+	$_ = &call_sbire("info $name",1);
+	my $mymd=md5_hex($content);
+	if (/Signature\W+([\w]+)/) {
+		my $md5=$1;
+		# Verification de notre propre signature
+		if ($md5 eq $mymd) {
+			print "Files are identical. Skip...";
+			exit(0);
+			}
+	}
+	return $mymd;
+}
 
 sub readKeyFile() {
    my($file)=@_;

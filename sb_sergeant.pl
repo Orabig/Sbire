@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-my $Version= 'Version 0.9.17';
+my $Version= 'Version 0.9.18';
 
 ####################
 #
@@ -19,6 +19,7 @@ my $Version= 'Version 0.9.17';
 #              0.9.15:  Added the optional -d <dir> argument to run command
 #              0.9.16:  The server_list file can now contain characters after the server name/IP
 #              0.9.17:  __NAME__ and __TARGET__ may now be used in all commands
+#              0.9.18:  Added --split <file> parameter
 # 
 # Knows about a list of servers, and delegates to sb_master.pl to send them commands in group
 #
@@ -51,6 +52,21 @@ our $CSV = grep /^--csv$/, @ARGV;
 # On recherche la presence d'une option --local dans les arguments
 our $LOCAL = grep /^--local$/, @ARGV;
 @ARGV = grep !/^--local$/, @ARGV;
+# On recherche la presence d'une option --silent dans les arguments
+our $SILENT = grep /^--silent$/, @ARGV;
+@ARGV = grep !/^--silent$/, @ARGV;
+# Extraction du parametre split
+our $SPLIT;
+our %SPLITTER;
+{
+my $split_pos, my $count=0;
+if ( grep {$count++;my $found=/^--split$/;$split_pos=$count if $found;$found} @ARGV ) {
+	$count=0;
+	$SPLIT = (grep {$count++;$count==$split_pos+1} @ARGV)[0]; # Get the parameter AFTER --split
+	$count=0;
+	@ARGV = grep {$count++;$count<$split_pos || $count>$split_pos+1} @ARGV;
+	}
+}
 
 undef $\ if $CSV;
 
@@ -65,8 +81,9 @@ if (-f $CONFIG_FILE) {
 } else {
     # default configuration
 	$Config{'SBIRE_LIST'} = "$ROOT_DIR/etc/server_list.txt";
-	
 }
+
+our $currentList;
 
 # Loads the configuration
 our @SBIRES;
@@ -82,37 +99,76 @@ my $MULTIPLE = ($files=~/^\@/) || ($files=~/^all$/i);
 
 $MULTIPLE=0 if $LOCAL && !/__(NAME|TARGET)__/; # Only one iteration if file=='all' but the command is local and no MACRO is used
 
-if ($MULTIPLE && $files=~s/^\@//) {
-	# open file list
-	-f "$CONFIG_DIR/$files.lst" || die ("$CONFIG_DIR/$files.lst not found");	
-	open LST, "$CONFIG_DIR/$files.lst";
-	map { 
-		chomp;
-		if (defined $SBIRES{$_}) {
-			&process($_);
-		} else {
-			print "$_\tServer not found in server list\n";
-		}
-	} grep /\w/, map {s/[#; ].*//;$_} <LST>;
-	close LST;
-	exit(0);
-	}
 
-# Else
-	{
-	# filter servers
+
+if ($MULTIPLE && $files=~s/^\@//) {
+	my $baseListDir='.';
+	my @listFiles;
+	my $multiList=0;
+	if ($files=~/\*/ ) {
+		$multiList=1;
+		# Look for list files
+		my $glob = "$baseListDir/$files.lst";
+		@listFiles = grep { -f } < $glob >;
+	} else {
+		# open file list
+		$baseListDir= $CONFIG_DIR unless -f "$CONFIG_DIR/$files.lst";
+		die ("$baseListDir/$files.lst not found") unless -f "$baseListDir/$files.lst";
+		@listFiles = ( "$baseListDir/$files.lst" );
+	}
+	foreach my $currentFileList (@listFiles) { 
+		$currentList = $currentFileList;$currentList=~s!.*/(.*?)\.lst!\1!;
+		print "================== $currentList ===============\n" if $multiList;
+		open LST, $currentFileList;
+		map {
+			chomp;
+			if (defined $SBIRES{$_}) {
+				&process($_);
+			} else {
+				print "$_\tServer not found in server list\n";
+			}
+		} grep /\w/, map {s/[#; ].*//;$_} <LST>;
+		close LST;
+	}
+}
+else {
+	# filter servers by name
 	my $ifiles = $files;
 	$files=~s/\*/.*/g;
 	$files=".*" if (lc $files eq 'all');
 	my @slist = grep /^$files$/i, grep /\w/, @SBIRES;
 	print "$ifiles\tServer not found in server list" unless @slist;
-	map { 
+	foreach (@slist) { 
 		&process($_);
 		last unless $MULTIPLE;
-		} @slist;
-	exit(0);
-	}
+	};
+}
 
+# Post-process :: --split
+
+if ($SPLIT) {
+	print "---------------- SPLIT ---------------" unless $SILENT;
+	my $count=0;
+	foreach my $key (keys %SPLITTER) {
+		$count++;
+		# Generate a split-file
+		my $splitname="$SPLIT-$count";
+		my @aliases = @{ $SPLITTER{$key} };
+		# Generate the output
+		{ 
+		local $\;undef $\;
+		open OUTPUT, ">$splitname.out";
+		print OUTPUT $key;
+		close OUTPUT;
+		}
+		# Generate the listfile
+		open LIST, ">$splitname.lst";
+		print LIST join $/,@aliases;
+		close LIST;
+		print "$splitname.lst written (" . (1+$#aliases) . " aliases)";
+	}
+}
+exit(0);
 
 # ------------------------------------------------
 
@@ -175,7 +231,7 @@ sub process() {
 			my $line="-" x length $header; 
 			$header="$line\n$header\n$line";
 		} 
-		print $header unless ($CSV || $command eq 'download') && !$MULTIPLE;
+		print $header unless $SILENT || ( ($CSV || $command eq 'download') && !$MULTIPLE );
 		
 		if (uc $protocol eq 'LOCAL') {
 			$cmd="$MASTER -H $name -P $protocol @args";
@@ -203,19 +259,29 @@ sub process() {
 	}
 	$cmd=~s/__NAME__/$alias/g;
 	$cmd=~s/__TARGET__/$name/g;
+	$cmd=~s/__LIST__/$currentList/g;
 	
 	#print $cmd;
 	my $output = `$cmd`;
+	if ($SPLIT) {
+		my @splitter = defined $SPLITTER{$output} ? @{$SPLITTER{$output}} : ();
+		push @splitter, $alias;
+		$SPLITTER{$output} = \@splitter;
+	}
 	if ($?) {
 		print "ERROR : $!\n$output";
 		return;
 		}
 	if ($CSV && ! $LOCAL) {
-		# En sortie CSV, on prefixe toutes les lignes par le nom du serveur son adresse IP et le protocole
+		# With CSV output, each line must be prefixed by the server's name
 		$output="\n" if $output eq '';
-		$output=~s/^/$alias\t/gm;
+		my $len=length $alias;
+		my $max = 20; # TODO : Could change 20 with the largest width
+		$len=$max if $len>$max;
+		my $prefix = $alias . ' ' x (20 - $len); 
+		$output=~s/^/$prefix/gm;
 	}
-	print $output;
+	print $output unless $SILENT;
 }
 
 sub getConf() {
@@ -256,6 +322,7 @@ sub readSbireFile() {
 			$CONF{$alias}->{'PROTOCOL'}=$protocol;
 		}
 	}
+	close CFG;
 	%CONF;
 }
 
