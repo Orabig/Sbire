@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-my $Version= 'Version 0.9.17';
+my $Version= 'Version 0.9.18';
 
 ####################
 #
@@ -19,6 +19,7 @@ my $Version= 'Version 0.9.17';
 #              0.9.15:  Added the optional -d <dir> argument to run command
 #              0.9.16:  The server_list file can now contain characters after the server name/IP
 #              0.9.17:  __NAME__ and __TARGET__ may now be used in all commands
+#              0.9.18:  Added --split <file> parameter
 # 
 # Knows about a list of servers, and delegates to sb_master.pl to send them commands in group
 #
@@ -51,6 +52,18 @@ our $CSV = grep /^--csv$/, @ARGV;
 # On recherche la presence d'une option --local dans les arguments
 our $LOCAL = grep /^--local$/, @ARGV;
 @ARGV = grep !/^--local$/, @ARGV;
+# Extraction du parametre split
+our $SPLIT;
+our %SPLITTER;
+{
+my $split_pos, my $count=0;
+if ( grep {$count++;my $found=/^--split$/;$split_pos=$count if $found;$found} @ARGV ) {
+	$count=0;
+	$SPLIT = (grep {$count++;$count==$split_pos+1} @ARGV)[0]; # Get the parameter AFTER --split
+	$count=0;
+	@ARGV = grep {$count++;$count<$split_pos || $count>$split_pos+1} @ARGV;
+	}
+}
 
 undef $\ if $CSV;
 
@@ -65,8 +78,9 @@ if (-f $CONFIG_FILE) {
 } else {
     # default configuration
 	$Config{'SBIRE_LIST'} = "$ROOT_DIR/etc/server_list.txt";
-	
 }
+
+our $currentList;
 
 # Loads the configuration
 our @SBIRES;
@@ -82,11 +96,15 @@ my $MULTIPLE = ($files=~/^\@/) || ($files=~/^all$/i);
 
 $MULTIPLE=0 if $LOCAL && !/__(NAME|TARGET)__/; # Only one iteration if file=='all' but the command is local and no MACRO is used
 
+
+
 if ($MULTIPLE && $files=~s/^\@//) {
 	# open file list
-	-f "$CONFIG_DIR/$files.lst" || die ("$CONFIG_DIR/$files.lst not found");	
-	open LST, "$CONFIG_DIR/$files.lst";
-	map { 
+	my $baseListDir= -f "$CONFIG_DIR/$files.lst" ? $CONFIG_DIR : '.';
+	die ("$CONFIG_DIR/$files.lst not found") unless -f "$baseListDir/$files.lst";
+	$currentList=$files; # This is used by __LIST__
+	open LST, "$baseListDir/$files.lst";
+	map {
 		chomp;
 		if (defined $SBIRES{$_}) {
 			&process($_);
@@ -95,12 +113,9 @@ if ($MULTIPLE && $files=~s/^\@//) {
 		}
 	} grep /\w/, map {s/[#; ].*//;$_} <LST>;
 	close LST;
-	exit(0);
-	}
-
-# Else
-	{
-	# filter servers
+}
+else {
+	# filter servers by name
 	my $ifiles = $files;
 	$files=~s/\*/.*/g;
 	$files=".*" if (lc $files eq 'all');
@@ -109,10 +124,31 @@ if ($MULTIPLE && $files=~s/^\@//) {
 	map { 
 		&process($_);
 		last unless $MULTIPLE;
-		} @slist;
-	exit(0);
-	}
+	} @slist;
+}
 
+# Post-process :: --split
+
+if ($SPLIT) {
+	print "---------------- SPLIT ---------------";
+	my $count=0;
+	foreach my $key (keys %SPLITTER) {
+		$count++;
+		# Generate a split-file
+		my $splitname="$SPLIT-$count";
+		my @aliases = @{ $SPLITTER{$key} };
+		# Generate the output
+		open OUTPUT, ">$splitname.out";
+		print OUTPUT $key;
+		close OUTPUT;
+		# Generate the listfile
+		open LIST, ">$splitname.lst";
+		print LIST join $/,@aliases;
+		close LIST;
+		print "$splitname.lst written (" . (1+$#aliases) . " aliases)";
+	}
+}
+exit(0);
 
 # ------------------------------------------------
 
@@ -203,9 +239,15 @@ sub process() {
 	}
 	$cmd=~s/__NAME__/$alias/g;
 	$cmd=~s/__TARGET__/$name/g;
+	$cmd=~s/__LIST__/$currentList/g;
 	
 	#print $cmd;
 	my $output = `$cmd`;
+	if ($SPLIT) {
+		my @splitter = defined $SPLITTER{$output} ? @{$SPLITTER{$output}} : ();
+		push @splitter, $alias;
+		$SPLITTER{$output} = \@splitter;
+	}
 	if ($?) {
 		print "ERROR : $!\n$output";
 		return;
@@ -260,6 +302,7 @@ sub readSbireFile() {
 			$CONF{$alias}->{'PROTOCOL'}=$protocol;
 		}
 	}
+	close CFG;
 	%CONF;
 }
 
