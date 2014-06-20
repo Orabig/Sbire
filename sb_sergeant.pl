@@ -52,6 +52,9 @@ our $CSV = grep /^--csv$/, @ARGV;
 # On recherche la presence d'une option --local dans les arguments
 our $LOCAL = grep /^--local$/, @ARGV;
 @ARGV = grep !/^--local$/, @ARGV;
+# On recherche la presence d'une option --silent dans les arguments
+our $SILENT = grep /^--silent$/, @ARGV;
+@ARGV = grep !/^--silent$/, @ARGV;
 # Extraction du parametre split
 our $SPLIT;
 our %SPLITTER;
@@ -144,7 +147,7 @@ else {
 # Post-process :: --split
 
 if ($SPLIT) {
-	print "---------------- SPLIT ---------------";
+	print "---------------- SPLIT ---------------" unless $SILENT;
 	my $count=0;
 	foreach my $key (keys %SPLITTER) {
 		$count++;
@@ -225,7 +228,7 @@ sub process() {
 			my $line="-" x length $header; 
 			$header="$line\n$header\n$line";
 		} 
-		print $header unless ($CSV || $command eq 'download') && !$MULTIPLE;
+		print $header unless $SILENT || ( ($CSV || $command eq 'download') && !$MULTIPLE );
 		
 		if (uc $protocol eq 'LOCAL') {
 			$cmd="$MASTER -H $name -P $protocol @args";
@@ -275,7 +278,7 @@ sub process() {
 		my $prefix = $alias . ' ' x (20 - $len); 
 		$output=~s/^/$prefix/gm;
 	}
-	print $output;
+	print $output unless $SILENT;
 }
 
 sub getConf() {
