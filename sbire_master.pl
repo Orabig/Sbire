@@ -21,6 +21,7 @@
 #              0.9.10:  Added the optional -d <dir> argument to run command
 #              0.9.11:  fix : command lines may now contain "--"
 #              0.9.12:  Removed 'options' and improved 'config' (added -n option)
+#              0.9.13:  Download do nothing if remote and local files are identical
 # 
 # NRPE plugins update/manage master script
 #
@@ -177,12 +178,17 @@ sub restart {
 
 sub download {
 	my ($file,$name,$verbose)=@_;
+	if (-f $file) {
+		# The file exists, so we should check if a download is necessary
+		my $localContent=readFileContent($file);
+		exitIfRemoteContentIsIdentical($name, $localContent);
+	}
 	my $content=&call_sbire("download $name");
-	print "Writing file" if ($verbose);
 	unless ($file) {
 		undef $\;
 		print $content;
 	} else {
+		print "Writing file" if ($verbose);
 		open INF, ">$file" or die "\nCan't open $file for writing: $!\n";
 		binmode INF;
 		print INF $content;
@@ -198,22 +204,9 @@ sub upload {
 	
 	# Lecture du fichier
 	print "Reading file" if ($verbose);
-	open INF, $file or die "\nCan't open $file: $!\n";
-	binmode INF;
-	my $content = do { local $/; <INF> };
-	close INF;
+	my $content=readFileContent($file);
 	
-	# Verification de la version du fichier
-	$_ = &call_sbire("info $name",1);
-	my $mymd=md5_hex($content);
-	if (/Signature\W+([\w]+)/) {
-		my $md5=$1;
-		# Verification de notre propre signature
-		if ($md5 eq $mymd) {
-			print "Files are identical. Skip...";
-			exit(0);
-			}
-	}
+	my $mymd=exitIfRemoteContentIsIdentical($name, $content);
 	
 	# Demande d'un nouvel ID de session
 	my $ID = &call_sbire("send newfile");
@@ -264,7 +257,34 @@ sub upload {
 	my $args="update $name $ID $signature";
 	$_=&call_sbire($args);
 	print;
-}		
+}
+
+sub readFileContent() {
+	my ($file)=@_;
+	open INF, $file or die "\nCan't open $file: $!\n";
+	binmode INF;
+	my $content = do { local $/; <INF> };
+	close INF;
+	return $content;
+}
+
+# This sub control if the given content is identical to the remote content (with MD5)
+# It then returns the MD5 of the local content, or exit the program if contents are identical
+sub exitIfRemoteContentIsIdentical() {
+	my ($name, $content)=@_;
+	# Verification de la version du fichier
+	$_ = &call_sbire("info $name",1);
+	my $mymd=md5_hex($content);
+	if (/Signature\W+([\w]+)/) {
+		my $md5=$1;
+		# Verification de notre propre signature
+		if ($md5 eq $mymd) {
+			print "Files are identical. Skip...";
+			exit(0);
+			}
+	}
+	return $mymd;
+}
 
 sub readKeyFile() {
    my($file)=@_;
