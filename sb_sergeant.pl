@@ -99,20 +99,34 @@ $MULTIPLE=0 if $LOCAL && !/__(NAME|TARGET)__/; # Only one iteration if file=='al
 
 
 if ($MULTIPLE && $files=~s/^\@//) {
-	# open file list
-	my $baseListDir= -f "$CONFIG_DIR/$files.lst" ? $CONFIG_DIR : '.';
-	die ("$CONFIG_DIR/$files.lst not found") unless -f "$baseListDir/$files.lst";
-	$currentList=$files; # This is used by __LIST__
-	open LST, "$baseListDir/$files.lst";
-	map {
-		chomp;
-		if (defined $SBIRES{$_}) {
-			&process($_);
-		} else {
-			print "$_\tServer not found in server list\n";
-		}
-	} grep /\w/, map {s/[#; ].*//;$_} <LST>;
-	close LST;
+	my $baseListDir='.';
+	my @listFiles;
+	my $multiList=0;
+	if ($files=~/\*/ ) {
+		$multiList=1;
+		# Look for list files
+		my $glob = "$baseListDir/$files.lst";
+		@listFiles = grep { -f } < $glob >;
+	} else {
+		# open file list
+		$baseListDir= $CONFIG_DIR unless -f "$CONFIG_DIR/$files.lst";
+		die ("$baseListDir/$files.lst not found") unless -f "$baseListDir/$files.lst";
+		@listFiles = ( "$baseListDir/$files.lst" );
+	}
+	foreach my $currentFileList (@listFiles) { 
+		$currentList = $currentFileList;$currentList=~s!.*/(.*?)\.lst!\1!;
+		print "================== $currentList ===============\n" if $multiList;
+		open LST, $currentFileList;
+		map {
+			chomp;
+			if (defined $SBIRES{$_}) {
+				&process($_);
+			} else {
+				print "$_\tServer not found in server list\n";
+			}
+		} grep /\w/, map {s/[#; ].*//;$_} <LST>;
+		close LST;
+	}
 }
 else {
 	# filter servers by name
@@ -121,10 +135,10 @@ else {
 	$files=".*" if (lc $files eq 'all');
 	my @slist = grep /^$files$/i, grep /\w/, @SBIRES;
 	print "$ifiles\tServer not found in server list" unless @slist;
-	map { 
+	foreach (@slist) { 
 		&process($_);
 		last unless $MULTIPLE;
-	} @slist;
+	};
 }
 
 # Post-process :: --split
