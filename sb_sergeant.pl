@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-my $Version= 'Version 0.9.18';
+my $Version= 'Version 0.9.19';
 
 ####################
 #
@@ -20,6 +20,7 @@ my $Version= 'Version 0.9.18';
 #              0.9.16:  The server_list file can now contain characters after the server name/IP
 #              0.9.17:  __NAME__ and __TARGET__ may now be used in all commands
 #              0.9.18:  Added --split <file> parameter
+#              0.9.19:  servers may now be selected with 'connect SERVER1,SERVER2...'
 # 
 # Knows about a list of servers, and delegates to sb_master.pl to send them commands in group
 #
@@ -95,13 +96,16 @@ if (lc $files eq 'list') {
 	exit(0);
 }
 
-my $MULTIPLE = ($files=~/^\@/) || ($files=~/^all$/i);
+my $MULTIPLE = ($files=~/^\@/) || ($files=~/^all$/i) || ($files=~/^(\w+,)+\w+$/);
 
-$MULTIPLE=0 if $LOCAL && !/__(NAME|TARGET)__/; # Only one iteration if file=='all' but the command is local and no MACRO is used
+$MULTIPLE=0 if $LOCAL && "@ARGV"!~/__(NAME|TARGET)__/; # Only one iteration if file=='all' but the command is local and no MACRO is used
 
+# Allow local command even without server defined
+$files='local' if $LOCAL && !$files;
 
 
 if ($MULTIPLE && $files=~s/^\@//) {
+	# Load list of server names from a file
 	my $baseListDir='.';
 	my @listFiles;
 	my $multiList=0;
@@ -136,6 +140,7 @@ else {
 	my $ifiles = $files;
 	$files=~s/\*/.*/g;
 	$files=".*" if (lc $files eq 'all');
+	$files=~s/,/|/g;
 	my @slist = grep /^$files$/i, grep /\w/, @SBIRES;
 	print "$ifiles\tServer not found in server list" unless @slist;
 	foreach (@slist) { 
@@ -212,10 +217,12 @@ sub process() {
 				print "ERROR : No command defined";return;
 			}
 			# It is much more easy to print the command line to understand what is going on...
-			print "LOCAL> $cmd";
+			print "LOCAL ($alias)> $cmd\n";
 		} elsif ($command eq 'info') {
-			# TODO : This must be rewritten
-		    my $file = join '%',@args; $file=~s/(^|.*\%)-n\%([^\%]+)(\%.*|$)/$2/;
+		    my $file = join '%',@args; 
+		  	unless ($file=~s/(^|.*\%)-n\%([^\%]+)(\%.*|$)/$2/) {
+				print "ERROR : -n <file> argument is mandatory";return;
+			}
 			# TODO : this could be better of course.
 			my $sbire_path = $0; $sbire_path=~s/sb_sergeant/server_side\/sbire/;
 			$cmd="/usr/bin/perl $sbire_path --direct info $file";
@@ -275,13 +282,9 @@ sub process() {
 	if ($CSV && ! $LOCAL) {
 		# With CSV output, each line must be prefixed by the server's name
 		$output="\n" if $output eq '';
-		my $len=length $alias;
-		my $max = 20; # TODO : Could change 20 with the largest width
-		$len=$max if $len>$max;
-		my $prefix = $alias . ' ' x (20 - $len); 
-		$output=~s/^/$prefix/gm;
+		$output=~s/^/$alias\t/gm;
 	}
-	print $output unless $SILENT;
+	print $output unless $SILENT || $SPLIT;
 }
 
 sub getConf() {

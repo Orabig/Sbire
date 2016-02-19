@@ -102,7 +102,7 @@ Sbire at a glance
 Install
 -------
 
-Server side :
+* Server side :
 
 NRPE plugin must be present on server-side. To install check_nrpe plugin, there is an install script that you can launch with :
 
@@ -112,6 +112,20 @@ To install sbire_master (which is the server-side of sbire), just type
 
     curl -sSL sbi.re/install_server | sudo bash
 
+* Client side *(Where you will type your commands)* :
+
+**TODO : Find a Linux expert who could tell me if there's a better place for this**
+
+Extract this repository to /opt/adm/sbire
+
+	mkdir -p /opt/adm
+    git clone https://github.com/Orabig/Sbire.git sbire
+	
+Add the following into your `.bashrc` file
+
+    if [ -f /opt/adm/sbire/etc/.bash_aliases ]; then
+            source /opt/adm/sbire/etc/.bash_aliases
+    fi
 
 
 Presentation
@@ -134,29 +148,82 @@ Atm, there are 3 scripts :
   It's an utility which generates a couple of private/public keys, which can be used when RSA security-based
   transfert protocol are activated between `sbire.pl` and `sbire_master.pl`.
 
+
+  
 Usage
 -----
 
-To check if configuration is correct, run :
+You should create /opt/adm/sbire/etc/server_list.txt (there's a sample file) and add you servers IP adresses and aliases.
 
-> ./sbire_master.pl -H <IP>
+To check if configuration is correct, just type :
+
+    $ connect all
 
 It should return :
 
-> sbire.pl Version 0.9.2
+    $ connect all
+	ALIAS1     sbire.pl Version 0.9.29  (linux, RSA:pub=/opt/nagios/etc/sbire_rsa.pub)
+	ALIAS2     sbire.pl Version 0.9.29  (linux, RSA:pub=/opt/nagios/etc/sbire_rsa.pub)
+	...
+
+To run sbire commands on a specific server, type
+
+    $ connect ALIAS1
+	ALIAS1     sbire.pl Version 0.9.29  (linux, RSA:pub=/opt/nagios/etc/sbire_rsa.pub)
+	$ r pwd
+	ALIAS1     /usr/lib/nagios/plugins
+	
+You may also connect to serveral server at once with
+
+    $ connect ALIAS1,ALIAS3,(...)
+	
+Or build a server list in a file 'aliaslist', and use
+
+    $ connect @aliaslist
+
+
+* The following aliases are available :
+
+Alias              | Description                
+------------------ | ------------------------------
+s  | Run sbire on every connected servers
+s -c &lt;command> ... | Run a sbire command among upload, download, run, info, config, nrpe
+c &lt;command> ... | Alias to `s -c &lt;command> ...`
+r &lt;cmdline> -- ... | Alias to `s -c run -n &lt;cmdline> -- ...` : will launch the given cmdline on servers
+
+* Some common arguments may be used
+
+Argument         |  Description
+---------------- | --------------
+--csv | Output the result in CSV like (no server info blocks and each line is prefixed by the server alias)
+--split <file> | Each unique output is saved in a separate `file.1.out`, `file.2.out`... file, and the aliases are stored in `file.1.lst`....
+--local (with `info` command) | run sbire locally to get the version info about a local file
+--local (with `run` command) | run a command line locally **for each connected server**. Useful with the following macros : __NAME__ and __TARGET__ (the alias name and IP adress resp.)
+
+Examples :
+
+    $ r --local echo __NAME__ IP is __TARGET__
+	$ c download -n myplugin -f myplugin.__NAME__
+	$ c download -n myplugin --split myplugin
+    $ r --local ping __TARGET__ -c 1
+	
+	
+Commands
+--------
+
 
 
 To transfert or update a NRPE plugin, write :
 
-> `./sbire_master.pl` -H <IP> -c update -n <remote> -f <local>
+> c upload -n &lt;remote> -f &lt;local>
 
-Where : <remote> is the name of the NRPE script (in the remote folder)
-        <local> is the filename of the script to transfert
+Where : &lt;remote> is the name of the NRPE script (in the remote folder)
+        &lt;local> is the filename of the script to transfert
 
 This will do the following :
 
-1. If <remote> and <local> are identical, nothing is done (an MD5 comparison is performed)
-2. <local> is sent to the NRPE server in a temporary folder (SESSION_FOLDER)
-3. If a <remote> file already exist, then it's archived
-4. The new <remote> file is written/replaced.
+1. If &lt;remote> and &lt;local> are identical, nothing is done (an MD5 comparison is performed)
+2. &lt;local> is sent to the NRPE server in a temporary folder (SESSION_FOLDER)
+3. If a &lt;remote> file already exist, then it's archived
+4. The new &lt;remote> file is written/replaced.
 

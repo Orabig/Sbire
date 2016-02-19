@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-my $Version= 'Version 0.9.27';
+my $Version= 'Version 0.9.29';
 
 ####################
 #
@@ -21,6 +21,8 @@ my $Version= 'Version 0.9.27';
 #           0.9.25 : removed 'options'. 'config' can now work on alternate config files
 #           0.9.26 : Improved config file update
 #           0.9.27 : Removed 'restart' which is useless
+#           0.9.28 : Handle disk full situation
+#           0.9.29 : Fixed local info with relative filename
 #
 # Usage :
 #
@@ -99,13 +101,14 @@ my $Version= 'Version 0.9.27';
 		print "Usage : sbire.pl <config_file> [commands...]\n";
 		exit(1);
 		}
+	unlink $CONF if -z $CONF;
 	 
 	unless (-e $CONF) {
-		print "Configuration file missing. Init with default values";
+		print "Configuration file missing. Init $CONF with default values";
 		open CF, ">$CONF" || &error("Cannot write $CONF");
 		print CF <<__EOF__;
 # sbire.pl configuration file.
-OUTPUT_LIMIT = 1024
+OUTPUT_LIMIT = 640
  
 SESSIONDIR = /tmp/sbire
 ARCHIVEDIR = /var/nagios/archive
@@ -136,7 +139,9 @@ BASEDIR = /usr/local/nagios
 
 __EOF__
 		close CF;
-		&error("Canot write $CONF") unless (-e $CONF);
+		&error("Cannot write $CONF") unless (-e $CONF);
+		&error("Cannot write $CONF : Disk full ?") if (-z $CONF);
+                exit;	
 		}
 
 	 &readConfig($CONF);
@@ -149,7 +154,6 @@ __EOF__
 	&error("Configuration error : ARCHIVEDIR ($ARCHIVEDIR) does not exist or is not writable") unless (-w $ARCHIVEDIR);
 	}
  my $COMMAND = shift(@ARGV);
-
 
  unless (defined $COMMAND) {
 	my $infos = "sbire.pl $Version ";
@@ -481,7 +485,8 @@ sub info {
  	my ($name) = @_;
 	$name='*' unless defined $name;
 	my $PATH = $name=~/\d$/ ? $ARCHIVEDIR : $name=~/^\// ? '' : $BASEDIR;
-	my $plugin = "$PATH/$name";
+	my $plugin = $name;
+	$plugin = "$PATH/$name" if $PATH;
 	$plugin=$PUBLIC_KEY if ($name eq 'PUBLIC_KEY');
 	$plugin.="/*" if (-d $plugin);
 	unless (-f $plugin || $plugin=~/\*/) {
