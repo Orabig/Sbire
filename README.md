@@ -106,11 +106,11 @@ Install
 
 NRPE plugin must be present on server-side. To install check_nrpe plugin, there is an install script that you can launch with :
 
-    curl -sSL sbi.re/install_nrpe | sudo bash
+    (TODO : sbire domain is not more valid)
 
 To install sbire_master (which is the server-side of sbire), just type
 
-    curl -sSL sbi.re/install_server | sudo bash
+    curl -sSL (TODO : sbire domain is not more valid) | sudo bash
 
 * Client side *(Where you will type your commands)* :
 
