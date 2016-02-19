@@ -188,8 +188,8 @@ Alias              | Description
 ------------------ | ------------------------------
 s  | Run sbire on every connected servers
 s -c &lt;command> ... | Run a sbire command among upload, download, run, info, config, nrpe
-c &lt;command> ... | Alias to `s -c &lt;command> ...`
-r &lt;cmdline> -- ... | Alias to `s -c run -n &lt;cmdline> -- ...` : will launch the given cmdline on servers
+c &lt;command> ... | Alias to `s -c <command> ...`
+r &lt;cmdline> -- ... | Alias to `s -c run -n <cmdline> -- ...` : will launch the given cmdline on servers
 
 * Some common arguments may be used
 
