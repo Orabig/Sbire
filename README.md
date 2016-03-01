@@ -196,7 +196,7 @@ r &lt;cmdline> -- ... | Alias to `s -c run -n <cmdline> -- ...` : will launch th
 Argument         |  Description
 ---------------- | --------------
 --csv | Output the result in CSV like (no server info blocks and each line is prefixed by the server alias)
---split <file> | Each unique output is saved in a separate `file.1.out`, `file.2.out`... file, and the aliases are stored in `file.1.lst`....
+--split &lt;file> | Each unique output is saved in a separate `file.1.out`, `file.2.out`... file, and the aliases are stored in `file.1.lst`....
 --local (with `info` command) | run sbire locally to get the version info about a local file
 --local (with `run` command) | run a command line locally **for each connected server**. Useful with the following macros : `__NAME__` and `__TARGET__` (the alias name and IP adress resp.)
 
