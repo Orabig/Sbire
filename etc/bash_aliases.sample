@@ -8,3 +8,12 @@ connect(){
   export SBIRE_TARGET=$1
   s --csv
   }
+
+scopy(){
+  echo Uploading $3 from $1
+  connect $1
+  c download -n $3 -f $3
+  echo Copying $3 to $2
+  connect $2
+  c upload -n $3 -f $3 --csv
+}
