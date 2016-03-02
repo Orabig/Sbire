@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-my $Version= 'Version 0.9.29';
+my $Version= 'Version 0.9.30';
 
 ####################
 #
@@ -23,6 +23,7 @@ my $Version= 'Version 0.9.29';
 #           0.9.27 : Removed 'restart' which is useless
 #           0.9.28 : Handle disk full situation
 #           0.9.29 : Fixed local info with relative filename
+#           0.9.30 : Uploaded files now try to keep the same permissions on Unix
 #
 # Usage :
 #
@@ -278,9 +279,18 @@ sub send {
 	&checkRsaSignature(md5_hex($content),$signature,$PUBLIC_KEY);
 		}
 	}
+
+	my $oldMode;
 		
 	# Archiver l'ancien fichier (s'il existe)
 	if (-f $plugin) {
+		# Sauvegarde des permissions
+		{
+		open(my $fh, "<", $plugin);
+		$oldMode = (stat $fh)[2] & 07777;
+		close $fh;
+		}
+		
 		unless (move($plugin,$archive)) {
 			unless (copy($plugin,$archive)) {
 				# Archive didn't work (nor move nor copy)
@@ -294,6 +304,11 @@ sub send {
 	binmode OUTPUT;
 	{ local $\; print OUTPUT $content; }
 	close OUTPUT;
+
+	# Garder les droits à l'identique
+	if ($oldMode) {
+		chmod($oldMode, $plugin);
+	}
 	
 	# Supprimer le fichier de session
 	unlink($chunks);
