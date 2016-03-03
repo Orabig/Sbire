@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-my $Version= 'Version 0.9.20';
+my $Version= 'Version 0.9.21';
 
 ####################
 #
@@ -22,6 +22,7 @@ my $Version= 'Version 0.9.20';
 #              0.9.18:  Added --split <file> parameter
 #              0.9.19:  servers may now be selected with 'connect SERVER1,SERVER2...'
 #              0.9.20:  Added --report parameter (info command only)
+#              0.9.21:  Arguments may now use wildcards (eg. c info -n '*.pl')
 # 
 # Knows about a list of servers, and delegates to sb_master.pl to send them commands in group
 #
@@ -206,7 +207,7 @@ sub process() {
 	my %sbire = %{$SBIRES{$alias}};
 	my $name=$sbire{'NAME'};
 	my $protocol=$sbire{'PROTOCOL'};
-	my @args = @ARGV;
+	my @args = map "'$_'", @ARGV;
 
 	# TODO : This should be rewritten
 	my $command = lc(join '%',@args); $command=~s/(^|.*\%)-c\%([^\%]+)(\%.*|$)/$2/;
