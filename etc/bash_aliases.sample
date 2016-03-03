@@ -11,9 +11,9 @@ connect(){
 
 scopy(){
   echo Uploading $3 from $1
-  connect $1
+  connect $1 >/dev/null
   c download -n $3 -f $3
   echo Copying $3 to $2
-  connect $2
-  c upload -n $3 -f $3 --csv
+  connect $2 >/dev/null
+  c upload -n $3 -f $3 --csv | grep -v 'are identical'
 }
