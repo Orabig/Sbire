@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-my $Version= 'Version 0.9.19';
+my $Version= 'Version 0.9.20';
 
 ####################
 #
@@ -20,7 +20,8 @@ my $Version= 'Version 0.9.19';
 #              0.9.16:  The server_list file can now contain characters after the server name/IP
 #              0.9.17:  __NAME__ and __TARGET__ may now be used in all commands
 #              0.9.18:  Added --split <file> parameter
-#              0.9.19:  Added --report parameter (info command only)
+#              0.9.19:  servers may now be selected with 'connect SERVER1,SERVER2...'
+#              0.9.20:  Added --report parameter (info command only)
 # 
 # Knows about a list of servers, and delegates to sb_master.pl to send them commands in group
 #
