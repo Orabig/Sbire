@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-my $Version= 'Version 0.9.21';
+my $Version= 'Version 0.9.22';
 
 ####################
 #
@@ -23,6 +23,7 @@ my $Version= 'Version 0.9.21';
 #              0.9.19:  servers may now be selected with 'connect SERVER1,SERVER2...'
 #              0.9.20:  Added --report parameter (info command only)
 #              0.9.21:  Arguments may now use wildcards (eg. c info -n '*.pl')
+#              0.9.22:  fix: CSV output
 # 
 # Knows about a list of servers, and delegates to sb_master.pl to send them commands in group
 #
@@ -287,6 +288,7 @@ sub process() {
 		}
 	if (($CSV || $REPORT) && ! $LOCAL) {
 		# With CSV output, each line must be prefixed by the server's name
+		chomp $output;
 		$output="\n" if $output eq '';
 		$output=~s/^/$alias\t/gm;
 	}
