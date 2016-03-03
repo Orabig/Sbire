@@ -4,7 +4,7 @@
 #
 # sbire_master.pl
 #
-# Version 0.9.14
+# Version 0.9.15
 #
 # Historique : 0.9.1 :  First public revision
 #              0.9.2 :  Improved configuration file
@@ -23,6 +23,7 @@
 #              0.9.12:  Removed 'options' and improved 'config' (added -n option)
 #              0.9.13:  Improve the meta-caracters handling (NRPE forbidden chars)
 #              0.9.14:  Download do nothing if remote and local files are identical
+#              0.9.15:  fix : final extra CR on uploaded/downloaded files removed
 # 
 # NRPE plugins update/manage master script
 #
@@ -165,17 +166,17 @@ sub download {
 		exitIfRemoteContentIsIdentical($name, $localContent);
 	}
 	my $content=&call_sbire("download $name");
+	undef $\;
 	unless ($file) {
-		undef $\;
 		print $content;
 	} else {
-		print "Writing file" if ($verbose);
+		print "Writing file$/" if ($verbose);
 		open INF, ">$file" or die "\nCan't open $file for writing: $!\n";
 		binmode INF;
 		print INF $content;
 		close INF;
 		my $len=length($content);
-		print "Downloaded $len bytes to $file.";
+		print "Downloaded $len bytes to $file$/";
 	}
 	exit(0);
 	}
@@ -316,10 +317,10 @@ sub call_sbire {
 		$result=substr($result,0,length($result)-length($remove)-1);
 		$result .= get_output($cmd);
 	}
+	print "(Complete decoded output is ".length($result)." bytes)" if ($verbose);
 	
 	if ($? && !$ignore_err) {
 		print "Error on > $cmd" if ($verbose);
-		chomp $result;
 		# Analyse des erreurs connues (et affichage de solutions appropriees)
 	#	if ($result=~/sh:.*sbire.pl: Permission denied/) {
 	#		print "$result\nCheck sbire.pl execution status on distant server.";
@@ -329,14 +330,15 @@ sub call_sbire {
 		print $result;
 		exit($?);
 	}
-	chomp $result;
 	print $result if ($verbose>2);
 	return $result;
 }
 
 sub get_output {
 	my ($cmd) = @_;
+	print "> $cmd" if ($verbose);
 	my $output=qx!$cmd!;
+	print "(output ".length($output)." bytes)" if ($verbose);
 	return $output=~/^b\*64_(.*)_b64$/sm ? decode_base64($1) : $output;
 }
 
