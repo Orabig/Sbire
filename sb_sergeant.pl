@@ -20,7 +20,7 @@ my $Version= 'Version 0.9.19';
 #              0.9.16:  The server_list file can now contain characters after the server name/IP
 #              0.9.17:  __NAME__ and __TARGET__ may now be used in all commands
 #              0.9.18:  Added --split <file> parameter
-#              0.9.19:  servers may now be selected with 'connect SERVER1,SERVER2...'
+#              0.9.19:  Added --report parameter (info command only)
 # 
 # Knows about a list of servers, and delegates to sb_master.pl to send them commands in group
 #
@@ -50,6 +50,10 @@ my $files = shift @ARGV;
 # On recherche la presence d'une option --csv dans les arguments
 our $CSV = grep /^--csv$/, @ARGV;
 @ARGV = grep !/^--csv$/, @ARGV;
+# On recherche la presence d'une option --report dans les arguments
+our $REPORT = grep /^--report$/, @ARGV;
+@ARGV = grep !/^--report$/, @ARGV;
+our @REPORT;
 # On recherche la presence d'une option --local dans les arguments
 our $LOCAL = grep /^--local$/, @ARGV;
 @ARGV = grep !/^--local$/, @ARGV;
@@ -69,7 +73,7 @@ if ( grep {$count++;my $found=/^--split$/;$split_pos=$count if $found;$found} @A
 	}
 }
 
-undef $\ if $CSV;
+undef $\ if $CSV || $REPORT;
 
 defined $files || &usage();
 &usage() if $files=~/^--?h/;
@@ -99,7 +103,6 @@ if (lc $files eq 'list') {
 my $MULTIPLE = ($files=~/^\@/) || ($files=~/^all$/i) || ($files=~/^(\w+,)+\w+$/);
 
 $MULTIPLE=0 if $LOCAL && "@ARGV"!~/__(NAME|TARGET)__/; # Only one iteration if file=='all' but the command is local and no MACRO is used
-
 # Allow local command even without server defined
 $files='local' if $LOCAL && !$files;
 
@@ -147,6 +150,7 @@ else {
 		&process($_);
 		last unless $MULTIPLE;
 	};
+	printReport() if $REPORT;
 }
 
 # Post-process :: --split
@@ -217,7 +221,7 @@ sub process() {
 				print "ERROR : No command defined";return;
 			}
 			# It is much more easy to print the command line to understand what is going on...
-			print "LOCAL ($alias)> $cmd\n";
+			print "LOCAL (alias:$alias)> $cmd\n";
 		} elsif ($command eq 'info') {
 		    my $file = join '%',@args; 
 		  	unless ($file=~s/(^|.*\%)-n\%([^\%]+)(\%.*|$)/$2/) {
@@ -231,14 +235,14 @@ sub process() {
 		}
 			
 	} else {	
-		# Local protocol (mainly for testing : not very useful to use sbire to run local commands)
+		# Local protocol
 		my $header=""; 
-		unless ($CSV) {
+		unless ($CSV or $REPORT) {
 			$header="| $alias ($name) |"; 
 			my $line="-" x length $header; 
 			$header="$line\n$header\n$line";
 		} 
-		print $header unless $SILENT || ( ($CSV || $command eq 'download') && !$MULTIPLE );
+		print $header unless $SILENT || ( ($CSV || $REPORT || $command eq 'download') && !$MULTIPLE );
 		
 		if (uc $protocol eq 'LOCAL') {
 			$cmd="$MASTER -H $name -P $protocol @args";
@@ -279,12 +283,77 @@ sub process() {
 		print "ERROR : $!\n$output";
 		return;
 		}
-	if ($CSV && ! $LOCAL) {
+	if (($CSV || $REPORT) && ! $LOCAL) {
 		# With CSV output, each line must be prefixed by the server's name
 		$output="\n" if $output eq '';
 		$output=~s/^/$alias\t/gm;
 	}
-	print $output unless $SILENT || $SPLIT;
+	print $output unless $SILENT || $SPLIT || $REPORT;
+	push @REPORT,split $/,$output if $REPORT;
+	print '.' if $REPORT;     # Show a pending '......'
+}
+
+sub printReport() {
+	print $/;
+	my @lines=grep !/\t#HEADER#\s+/, @REPORT;
+	my %HASH; # Hash contenant des refs de hash : {file}->\{version}->\{signature}->\[server,...]
+	my %SERVERS; # Known servers
+	foreach (@lines) {
+		my($server,$file,$size,$version,$signature)=split /\t/;
+		$HASH{$file}{$version}{$signature}=[] unless $HASH{$file}{$version}{$signature};
+		push @{$HASH{$file}{$version}{$signature}}, $server;
+		$SERVERS{$server}=1;
+	}
+	my @SERVERS = keys %SERVERS;
+	# On affiche les plugins homogènes
+	local $\=$/;
+	foreach (keys %HASH) {
+		my $file=$_;
+		print "\n$file :";
+		my @versions = keys %{$HASH{$file}};
+		my $nversion = 0;
+		foreach my $version (@versions) {
+			foreach (keys %{$HASH{$file}{$version}}) {
+				$nversion++;
+				}
+			}
+		my $unique = ($nversion == 1); # only one version
+		my @absent = grep {
+			my $server=$_;
+			my $present=0;
+			foreach my $version (@versions) {
+				foreach my $sig (keys %{$HASH{$file}{$version}}) {
+					my @servers = @{$HASH{$file}{$version}{$sig}};
+					map {$present = 1 if $server eq $_} @servers;
+					}
+				}
+			! $present
+			} @SERVERS; # servers where this file is absent
+		print "\t\t(absent)\t".(join ',', @absent) if @absent;
+		foreach (@versions) {
+			my $version=$_;
+			my @signatures = keys %{$HASH{$file}{$version}};
+			if (@signatures==@SERVERS) {
+				print "\t\t(all different)";
+			} elsif (@signatures==1 && $version) {
+				my $sig = $signatures[0];
+				my @servers = @{$HASH{$file}{$version}{$sig}};
+				my $servers = join ',', @servers;
+				$servers = '(all)' if (@servers == @SERVERS or $unique) and @servers > @absent;
+				print "\t\t$version\t$servers";
+			} else {
+				# A same version has several signatures or the version is empty/null
+				foreach (@signatures) {
+					my $sig=$_;
+					my @servers = @{$HASH{$file}{$version}{$sig}};
+					my $servers = join ',', @servers;
+					$servers = '(all)' if (@servers == @SERVERS or $unique) and @servers > @absent;
+					$sig=~s/(.....).*/$1.../;
+					print "\t\t$version($sig)\t$servers";
+				}
+			}
+		}
+	}
 }
 
 sub getConf() {
