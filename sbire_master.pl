@@ -4,26 +4,16 @@
 #
 # sbire_master.pl
 #
-# Version 0.9.15
+# Version 0.9.16
 #
 # Historique : 0.9.1 :  First public revision
-#              0.9.2 :  Improved configuration file
-#						Changed 'update' command to 'upload'
-#              0.9.3 :  Different protocols may be used (LOCAL and NRPE so far)
-#              0.9.3 :  Added 'download' command
-#              0.9.4 :  Added illegal NRPE character conversion
-#						Added 'options' command
-#              0.9.5 :  Fixed problems by changing -e to -- argument
-#              0.9.6 :  The script can now be invoked from another directory
-#              0.9.7 :  Added SSH support
-#              0.9.8 :  Added NRPE command
-#              0.9.9 :  Added NRPE attributes
 #              0.9.10:  Added the optional -d <dir> argument to run command
 #              0.9.11:  fix : command lines may now contain "--"
 #              0.9.12:  Removed 'options' and improved 'config' (added -n option)
 #              0.9.13:  Improve the meta-caracters handling (NRPE forbidden chars)
 #              0.9.14:  Download do nothing if remote and local files are identical
 #              0.9.15:  fix : final extra CR on uploaded/downloaded files removed
+#              0.9.16:  -f parameter is now option and defaults to -n
 # 
 # NRPE plugins update/manage master script
 #
@@ -59,7 +49,7 @@ our ($CHUNK_SIZE, $privkey, $NRPE, $USE_ZLIB_COMPRESSION, $USE_RSA);
 # Sample configuration file
 \$CHUNK_SIZE = 832;
 \$privkey = '/usr/local/nagios/bin/sbire_key.private';
-\$NRPE = '/usr/local/nagios/libexec/check_nrpe';
+\$NRPE = '/usr/lib/nagios/iplugins/check_nrpe';
 \$USE_RSA = 1;
 \$USE_ZLIB_COMPRESSION = 1;
 1;
@@ -93,6 +83,11 @@ my ($help,$verbose);
 	
 &error("Destination (-H) is mandatory") unless defined $dest;
 &usage() if defined $help;
+	
+unless ($file) {
+	$file=$name;
+	$file=~s/.*(\\|\/)//;
+}
 
 # transforme les caracteres interdits pour NRPE en meta-caractere
 $name   =~s/[^\w ]/'%'.sprintf("%x",ord $&)/ge;
@@ -121,8 +116,8 @@ if ($command eq 'upload') {
 }
 
 sub usage {
-	print "Usage : sbire_master.pl -H <IP> -P LOCAL|NRPE|SSH -c upload -n <name> -f <file>";
-	print "        sbire_master.pl -H <IP> -P LOCAL|NRPE|SSH -c download -n <name> [-f <file>]";
+	print "Usage : sbire_master.pl -H <IP> -P LOCAL|NRPE|SSH -c upload -n <remote_file> [-f <local_file>]";
+	print "        sbire_master.pl -H <IP> -P LOCAL|NRPE|SSH -c download -n <remote_file> [-f <local_file>]";
 	print "        sbire_master.pl -H <IP> -P LOCAL|NRPE|SSH -c run [-d <dir>] -- <cmdline>";
 	print "        sbire_master.pl -H <IP> -P LOCAL|NRPE|SSH -c config [-n <config_file_name>] [-- <OPTION> <value>]";
 	print "        sbire_master.pl -H <IP> -P LOCAL|NRPE|SSH -c info -n <name>";
@@ -167,23 +162,18 @@ sub download {
 	}
 	my $content=&call_sbire("download $name");
 	undef $\;
-	unless ($file) {
-		print $content;
-	} else {
-		print "Writing file$/" if ($verbose);
-		open INF, ">$file" or die "\nCan't open $file for writing: $!\n";
-		binmode INF;
-		print INF $content;
-		close INF;
-		my $len=length($content);
-		print "Downloaded $len bytes to $file$/";
-	}
+	print "Writing file$/" if ($verbose);
+	open INF, ">$file" or die "\nCan't open $file for writing: $!\n";
+	binmode INF;
+	print INF $content;
+	close INF;
+	my $len=length($content);
+	print "Downloaded $len bytes to $file$/";
 	exit(0);
-	}
+}
 
 sub upload {
 	my ($file,$name,$verbose)=@_;
-	
 	# Lecture du fichier
 	print "Reading file" if ($verbose);
 	my $content=readFileContent($file);
