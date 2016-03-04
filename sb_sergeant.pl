@@ -1,21 +1,8 @@
 #!/usr/bin/perl
 
-my $Version= 'Version 0.9.25';
-
 ####################
 #
 # sb_sergeant.pl
-#
-# Historique : 0.9.0 :  First revision
-#              (...)
-#              0.9.18:  Added --split <file> parameter
-#              0.9.19:  servers may now be selected with 'connect SERVER1,SERVER2...'
-#              0.9.20:  Added --report parameter (info command only)
-#              0.9.21:  Arguments may now use wildcards (eg. c info -n '*.pl')
-#              0.9.22:  fix: CSV output
-#              0.9.23:  improved --split output
-#              0.9.24:  --report and --split outputs are sorted
-#              0.9.25:  fix report output issue
 # 
 # Knows about a list of servers, and delegates to sb_master.pl to send them commands in group
 #
@@ -66,6 +53,7 @@ if ( grep {$count++;my $found=/^--split$/;$split_pos=$count if $found;$found} @A
 	&usage() unless $SPLIT;
 	$count=0;
 	@ARGV = grep {$count++;$count<$split_pos || $count>$split_pos+1} @ARGV;
+	@ARGV = ('-f', 'STDOUT', @ARGV);
 	}
 }
 
@@ -178,7 +166,7 @@ exit(0);
 # ------------------------------------------------
 
 sub usage() {
-	print "Sbire_Sergeant : $Version";
+	print "Sbire_Sergeant :";
 	print "   (TODO : This usage is for direct use of 'sergeant' which is not generally the case. aliases 'connect', 's', 'c', 'r' are now prefered.)";
 	print 'Usage : sb_sergeant.pl list';
 	print '        sb_sergeant.pl <SERVER_NAME> [--csv] [--local] [ -c <COMMAND> args... ]';
@@ -307,6 +295,7 @@ sub printReport() {
 	local $\=$/;
 	foreach (sort keys %HASH) {
 		next if /does not exist/;
+		next unless /\w/;
 		my $file=$_;
 		print "\n$file :";
 		my @versions = keys %{$HASH{$file}};
