@@ -321,8 +321,11 @@ sub printReport() {
 		foreach (sort @versions) {
 			my $version=$_;
 			my @signatures = keys %{$HASH{$file}{$version}};
-			if (@signatures==@SERVERS && @SERVERS>3) {
+			if (@signatures==@SERVERS and @signatures>3) {
 				print "\t\t(all different)";
+			} elsif (@signatures==@SERVERS-@absent and @signatures>3) {
+				my $servers=join ',', map{ @{$HASH{$file}{$version}{$_}} }@signatures;
+				print "\t\t(all different)\t$servers";
 			} elsif (@signatures==1 && $version) {
 				my $sig = $signatures[0];
 				my @servers = @{$HASH{$file}{$version}{$sig}};
