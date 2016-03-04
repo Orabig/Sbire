@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-my $Version= 'Version 0.9.22';
+my $Version= 'Version 0.9.23';
 
 ####################
 #
@@ -24,6 +24,7 @@ my $Version= 'Version 0.9.22';
 #              0.9.20:  Added --report parameter (info command only)
 #              0.9.21:  Arguments may now use wildcards (eg. c info -n '*.pl')
 #              0.9.22:  fix: CSV output
+#              0.9.23:  improved --split output
 # 
 # Knows about a list of servers, and delegates to sb_master.pl to send them commands in group
 #
@@ -71,12 +72,13 @@ my $split_pos, my $count=0;
 if ( grep {$count++;my $found=/^--split$/;$split_pos=$count if $found;$found} @ARGV ) {
 	$count=0;
 	$SPLIT = (grep {$count++;$count==$split_pos+1} @ARGV)[0]; # Get the parameter AFTER --split
+	&usage() unless $SPLIT;
 	$count=0;
 	@ARGV = grep {$count++;$count<$split_pos || $count>$split_pos+1} @ARGV;
 	}
 }
 
-undef $\ if $CSV || $REPORT;
+undef $\ if $CSV || $REPORT || $SPLIT;
 
 defined $files || &usage();
 &usage() if $files=~/^--?h/;
@@ -159,7 +161,7 @@ else {
 # Post-process :: --split
 
 if ($SPLIT) {
-	print "---------------- SPLIT ---------------" unless $SILENT;
+	$\=$/;print;
 	my $count=0;
 	foreach my $key (keys %SPLITTER) {
 		$count++;
@@ -186,17 +188,17 @@ exit(0);
 
 sub usage() {
 	print "Sbire_Sergeant : $Version";
+	print "   (TODO : This usage is for direct use of 'sergeant' which is not generally the case. aliases 'connect', 's', 'c', 'r' are now prefered.)";
 	print 'Usage : sb_sergeant.pl list';
 	print '        sb_sergeant.pl <SERVER_NAME> [--csv] [--local] [ -c <COMMAND> args... ]';
 	print '        sb_sergeant.pl @<LIST_FILE>  [--csv] [--local] [ -c <COMMAND> args... ]';
 	print '        sb_sergeant.pl    all        [--csv] [--local] [ -c <COMMAND> args... ]';
 	print "Commands : ";
 	print "   -c upload   -f <local_file> -n <filename> ";
-	print "   -c download -n <filename> [-f <local_file>]";
-	print "   -c run [-d <dir>] -- <cmdline>";
-	print "   -c config -- <name> <value>";
-	print "   -c options";
-	print "   -c info [ -n <plugin_path> ]";
+	print "   -c download -n <filename> [-f <local_file>] [ --split <file> ]";
+	print "   -c run [-d <dir>] [ --split <file> ] -- <cmdline>";
+	print "   -c config [ --split <file> ] -- <name> <value>";
+	print "   -c info [ -n <plugin_path> ] [ --split <file> ] [--report]";
 	print "   -c restart";
 	exit(1);
 }
@@ -240,13 +242,14 @@ sub process() {
 	} else {	
 		# Local protocol
 		my $header=""; 
-		unless ($CSV or $REPORT) {
+		unless ($CSV or $REPORT or $SPLIT or ( ($command eq 'download') && !$MULTIPLE )) {
 			$header="| $alias ($name) |"; 
 			my $line="-" x length $header; 
 			$header="$line\n$header\n$line";
 		} 
-		print $header unless $SILENT || ( ($CSV || $REPORT || $command eq 'download') && !$MULTIPLE );
-		
+
+		print $header unless $SILENT;
+
 		if (uc $protocol eq 'LOCAL') {
 			$cmd="$MASTER -H $name -P $protocol @args";
 		}
@@ -294,7 +297,7 @@ sub process() {
 	}
 	print $output unless $SILENT || $SPLIT || $REPORT;
 	push @REPORT,split $/,$output if $REPORT;
-	print '.' if $REPORT;     # Show a pending '......'
+	print '.' if $REPORT or $SPLIT;     # Show a pending '......'
 }
 
 sub printReport() {
