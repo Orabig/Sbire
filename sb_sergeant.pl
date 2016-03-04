@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-my $Version= 'Version 0.9.23';
+my $Version= 'Version 0.9.24';
 
 ####################
 #
@@ -25,6 +25,7 @@ my $Version= 'Version 0.9.23';
 #              0.9.21:  Arguments may now use wildcards (eg. c info -n '*.pl')
 #              0.9.22:  fix: CSV output
 #              0.9.23:  improved --split output
+#              0.9.24:  --report and --split outputs are sorted
 # 
 # Knows about a list of servers, and delegates to sb_master.pl to send them commands in group
 #
@@ -163,7 +164,7 @@ else {
 if ($SPLIT) {
 	$\=$/;print;
 	my $count=0;
-	foreach my $key (keys %SPLITTER) {
+	foreach my $key (sort keys %SPLITTER) {
 		$count++;
 		# Generate a split-file
 		my $splitname="$SPLIT-$count";
@@ -179,7 +180,7 @@ if ($SPLIT) {
 		open LIST, ">$splitname.lst";
 		print LIST join $/,@aliases;
 		close LIST;
-		print "$splitname.lst written (" . (1+$#aliases) . " aliases)";
+		print "$splitname.out written (" . (join ',', sort @aliases) . ")";
 	}
 }
 exit(0);
@@ -314,7 +315,7 @@ sub printReport() {
 	my @SERVERS = keys %SERVERS;
 	# On affiche les plugins homogènes
 	local $\=$/;
-	foreach (keys %HASH) {
+	foreach (sort keys %HASH) {
 		my $file=$_;
 		print "\n$file :";
 		my @versions = keys %{$HASH{$file}};
@@ -337,7 +338,7 @@ sub printReport() {
 			! $present
 			} @SERVERS; # servers where this file is absent
 		print "\t\t(absent)\t".(join ',', @absent) if @absent;
-		foreach (@versions) {
+		foreach (sort @versions) {
 			my $version=$_;
 			my @signatures = keys %{$HASH{$file}{$version}};
 			if (@signatures==@SERVERS) {
@@ -350,7 +351,7 @@ sub printReport() {
 				print "\t\t$version\t$servers";
 			} else {
 				# A same version has several signatures or the version is empty/null
-				foreach (@signatures) {
+				foreach (sort @signatures) {
 					my $sig=$_;
 					my @servers = @{$HASH{$file}{$version}{$sig}};
 					my $servers = join ',', @servers;
