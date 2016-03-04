@@ -1,24 +1,13 @@
 #!/usr/bin/perl
 
-my $Version= 'Version 0.9.24';
+my $Version= 'Version 0.9.25';
 
 ####################
 #
 # sb_sergeant.pl
 #
 # Historique : 0.9.0 :  First revision
-#              0.9.6 :  Config::Simple package is not required anymore
-#              0.9.7 :  Fixed @server_list_file selection mode
-#              0.9.8 :  Some fix
-#              0.9.9 :  The script can now invoke sbire_master from another directory
-#              0.9.10:  Changed the @server_list_file behaviour
-#              0.9.11:  The server must now be fully named by the user (autocompletion was a bad idea)
-#              0.9.12:  Added SSH support
-#              0.9.13:  Fixed output on empty result with CSV option
-#              0.9.14:  Default configuration when sb_sergeant.cfg does not exist
-#              0.9.15:  Added the optional -d <dir> argument to run command
-#              0.9.16:  The server_list file can now contain characters after the server name/IP
-#              0.9.17:  __NAME__ and __TARGET__ may now be used in all commands
+#              (...)
 #              0.9.18:  Added --split <file> parameter
 #              0.9.19:  servers may now be selected with 'connect SERVER1,SERVER2...'
 #              0.9.20:  Added --report parameter (info command only)
@@ -26,6 +15,7 @@ my $Version= 'Version 0.9.24';
 #              0.9.22:  fix: CSV output
 #              0.9.23:  improved --split output
 #              0.9.24:  --report and --split outputs are sorted
+#              0.9.25:  fix report output issue
 # 
 # Knows about a list of servers, and delegates to sb_master.pl to send them commands in group
 #
@@ -316,6 +306,7 @@ sub printReport() {
 	# On affiche les plugins homogènes
 	local $\=$/;
 	foreach (sort keys %HASH) {
+		next if /does not exist/;
 		my $file=$_;
 		print "\n$file :";
 		my @versions = keys %{$HASH{$file}};
@@ -341,13 +332,13 @@ sub printReport() {
 		foreach (sort @versions) {
 			my $version=$_;
 			my @signatures = keys %{$HASH{$file}{$version}};
-			if (@signatures==@SERVERS) {
+			if (@signatures==@SERVERS && @SERVERS>3) {
 				print "\t\t(all different)";
 			} elsif (@signatures==1 && $version) {
 				my $sig = $signatures[0];
 				my @servers = @{$HASH{$file}{$version}{$sig}};
 				my $servers = join ',', @servers;
-				$servers = '(all)' if (@servers == @SERVERS or $unique) and @servers > @absent;
+				$servers = '(all)' if (@servers == @SERVERS or $unique) and @servers > @absent and @servers > 3;
 				print "\t\t$version\t$servers";
 			} else {
 				# A same version has several signatures or the version is empty/null
@@ -355,7 +346,7 @@ sub printReport() {
 					my $sig=$_;
 					my @servers = @{$HASH{$file}{$version}{$sig}};
 					my $servers = join ',', @servers;
-					$servers = '(all)' if (@servers == @SERVERS or $unique) and @servers > @absent;
+					$servers = '(all)' if (@servers == @SERVERS or $unique) and @servers > @absent and @servers > 3;
 					$sig=~s/(.....).*/$1.../;
 					print "\t\t$version($sig)\t$servers";
 				}
