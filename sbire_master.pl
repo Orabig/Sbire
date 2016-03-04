@@ -3,17 +3,6 @@
 ####################
 #
 # sbire_master.pl
-#
-# Version 0.9.16
-#
-# Historique : 0.9.1 :  First public revision
-#              0.9.10:  Added the optional -d <dir> argument to run command
-#              0.9.11:  fix : command lines may now contain "--"
-#              0.9.12:  Removed 'options' and improved 'config' (added -n option)
-#              0.9.13:  Improve the meta-caracters handling (NRPE forbidden chars)
-#              0.9.14:  Download do nothing if remote and local files are identical
-#              0.9.15:  fix : final extra CR on uploaded/downloaded files removed
-#              0.9.16:  -f parameter is now option and defaults to -n
 # 
 # NRPE plugins update/manage master script
 #
@@ -162,13 +151,17 @@ sub download {
 	}
 	my $content=&call_sbire("download $name");
 	undef $\;
-	print "Writing file$/" if ($verbose);
-	open INF, ">$file" or die "\nCan't open $file for writing: $!\n";
-	binmode INF;
-	print INF $content;
-	close INF;
-	my $len=length($content);
-	print "Downloaded $len bytes to $file$/";
+	if ($file eq 'STDOUT') {
+		print $content;
+	} else {
+		print "Writing file$/" if ($verbose);
+		open INF, ">$file" or die "\nCan't open $file for writing: $!\n";
+		binmode INF;
+		print INF $content;
+		close INF;
+		my $len=length($content);
+		print "Downloaded $len bytes to $file$/";
+	}
 	exit(0);
 }
 
