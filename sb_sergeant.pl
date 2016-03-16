@@ -84,7 +84,7 @@ if (lc $files eq 'list') {
 	exit(0);
 }
 
-my $MULTIPLE = ($files=~/^\@/) || ($files=~/^all$/i) || ($files=~/^(\w+,)+\w+$/);
+my $MULTIPLE = ($files=~/^\@/) || ($files=~/^all$/i) || ($files=~/,/);
 
 $MULTIPLE=0 if $LOCAL && "@ARGV"!~/__(NAME|TARGET)__/; # Only one iteration if file=='all' but the command is local and no MACRO is used
 # Allow local command even without server defined
